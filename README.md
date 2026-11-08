@@ -1,22 +1,26 @@
 # TindaTrack
 
 A desktop sari-sari store management application using Java, JavaFX with FXML,
-Maven, and (in later tasks) MySQL.
+Maven, and MySQL through JDBC.
 
-## Current scope: Day 1, Task 1
+## Current scope: Day 1, Task 4
 
-The Maven project and JavaFX entry point are prepared. Running the application
-starts JavaFX, prints a setup message, and exits. No window is displayed yet.
-The first FXML window and CSS styling belong to Task 2.
+The existing Maven project now opens one FXML welcome window titled
+`TindaTrack`. It displays `Welcome to TindaTrack` with simple CSS styling.
+Close the window using its normal title-bar close button to stop the application.
 
-Authentication, inventory, expiration alerts, customer credit, SQL scripts, and
-database connections have not been implemented.
+The MySQL schema script is prepared in `database/schema.sql` for manual execution
+in MySQL Workbench. The Java application still shows only the welcome window.
+Task 4 adds a shared database connection utility and a manual command-line
+connection test. The welcome window does not connect to the database.
+Authentication, inventory, expiration alerts, and customer credit features have
+not been implemented.
 
 ## Requirements
 
 - JDK 21, including the `javac` compiler.
 - Maven 3.9 or newer.
-- Windows desktop session for the JavaFX startup check.
+- Windows desktop session for the JavaFX window.
 - Internet access on the first build if dependencies are not already cached.
 
 The project uses JavaFX 21.0.12. Maven resolves the JavaFX libraries and native
@@ -33,6 +37,8 @@ TindaTrack/
 |-- README.md
 |-- .gitignore
 |-- .mvn/maven.config
+|-- config/database.properties.example
+|-- database/schema.sql
 `-- src/
     |-- main/
     |   |-- java/tindatrack/
@@ -41,10 +47,18 @@ TindaTrack/
     |   |   |-- inventory/package-info.java
     |   |   |-- guest/package-info.java
     |   |   |-- credit/package-info.java
-    |   |   `-- core/package-info.java
+    |   |   `-- core/
+    |   |       |-- package-info.java
+    |   |       |-- DatabaseConnection.java
+    |   |       |-- DatabaseConnectionTest.java
+    |   |       `-- WelcomeController.java
     |   `-- resources/tindatrack/
-    |       |-- fxml/.gitkeep
-    |       `-- css/.gitkeep
+    |       |-- fxml/
+    |       |   |-- .gitkeep
+    |       |   `-- welcome.fxml
+    |       `-- css/
+    |           |-- .gitkeep
+    |           `-- welcome.css
     `-- test/java/.gitkeep
 ```
 
@@ -108,9 +122,9 @@ mvn javafx:run
 - `mvn verify` runs the Maven build lifecycle through verification and produces
   `target/tindatrack-1.0-SNAPSHOT.jar`. There are no automated tests yet; Maven
   reporting `No tests to run` is expected.
-- `mvn javafx:run` starts the configured JavaFX entry point. It should print
-  `TindaTrack setup successful: JavaFX is running.`, then exit successfully.
-  No window should open during Task 1.
+- `mvn javafx:run` starts the configured JavaFX entry point and opens the welcome
+  window. Maven stays running while the window is open. Close the window to
+  finish the run and see `BUILD SUCCESS` in the terminal.
 
 Look for `BUILD SUCCESS` after each command. Use `mvn javafx:run` to run this
 setup; the generated JAR is not a standalone application with bundled JavaFX.
@@ -121,8 +135,12 @@ setup; the generated JAR is not a standalone application with bundled JavaFX.
 - [ ] Java, `javac`, and Maven all use Java 21.
 - [ ] `mvn compile` ends with `BUILD SUCCESS`.
 - [ ] `mvn verify` ends with `BUILD SUCCESS`.
-- [ ] `mvn javafx:run` prints the setup message and ends with `BUILD SUCCESS`.
-- [ ] No application window appears, as expected for Task 1.
+- [ ] `mvn javafx:run` opens a window titled `TindaTrack`.
+- [ ] The window displays `Welcome to TindaTrack` and the subtitle.
+- [ ] A white card appears on a light green background with readable text.
+- [ ] Resizing the window keeps the content centered and readable.
+- [ ] Closing the window returns to the terminal with `BUILD SUCCESS`.
+- [ ] No FXML loading errors or CSS warnings appear in the terminal.
 
 ### Troubleshooting
 
@@ -141,9 +159,26 @@ setup; the generated JAR is not a standalone application with bundled JavaFX.
 
 `TindaTrackApplication` extends JavaFX's `Application`. Its `main` method calls
 `launch(args)` to initialize JavaFX. JavaFX then calls `start(Stage primaryStage)`
-on its application thread. For Task 1, `start` prints the setup message and calls
-`Platform.exit()` to shut down cleanly. Task 2 will replace that temporary check
-with the first FXML window.
+on its application thread. `start` finds the FXML and CSS using classpath paths
+beginning with `/tindatrack/`. Maven copies these resources into `target/classes`
+during the build, so loading does not depend on a hardcoded source-file path.
+Missing resources produce a clear `IOException`.
+
+`FXMLLoader.load()` creates the layout described in `welcome.fxml`. The resulting
+root node goes into a `Scene`, which holds the window's content. The CSS file is
+attached to the scene. The `Stage` is the desktop window: `setTitle` names it,
+`setScene` supplies its content, and `show` makes it visible.
+
+The FXML's `fx:controller="tindatrack.core.WelcomeController"` tells the loader
+which controller to create. Its label has `fx:id="welcomeMessage"`, matching the
+controller's `@FXML private Label welcomeMessage` field. The loader injects the
+label into that field, then calls the controller's `@FXML initialize()` method.
+That method sets the welcome text. This demonstrates how Java code communicates
+with FXML controls. The controller belongs to the existing shared `core` package;
+this welcome view does not implement a dashboard or other store features.
+
+`welcome.css` styles the FXML nodes through their `styleClass` attributes. The
+layout stays in FXML, presentation stays in CSS, and initialization stays in Java.
 
 `pom.xml` declares JavaFX controls and FXML dependencies, compiles for Java 21,
 and tells the JavaFX Maven plugin which class to launch. This is a simple
@@ -151,14 +186,231 @@ non-modular project, so no `module-info.java` is needed at this stage.
 
 ## Local credentials
 
-No credentials or database configuration are needed for Task 1. `.gitignore`
+No credentials or database configuration are needed to run the welcome window. `.gitignore`
 excludes build output, IDE workspace files, `.env` files, and the listed local
-database property files. Safe `.env.example` files are allowed. Actual database
-configuration and JDBC will be added only in Task 4.
+database property files. Safe example files are allowed. Task 4 uses
+`config/database.properties` for credentials; it is already listed in
+`.gitignore`. Keep this file outside `src/main/resources` so Maven does not
+package credentials into the application's JAR.
+
+## Java-to-MySQL connection - Task 4
+
+### How JDBC works
+
+JDBC is Java's standard database API (`java.sql`). MySQL Connector/J implements
+that API for MySQL. The dependency in `pom.xml` places the driver on the classpath,
+where JDBC discovers it automatically; no `Class.forName` call is necessary.
+Connector/J 9.7.0 is selected for this project's MySQL 8.0 setup.
+
+`DatabaseConnection.getConnection()` reads local properties, validates required
+settings, and calls `DriverManager.getConnection(url, properties)`. Every call
+opens a new connection. There is no shared permanently open connection and no
+connection pool at this stage. Connect and socket timeouts are five seconds.
+The configuration reader is closed automatically.
+
+`DatabaseConnectionTest.main()` opens a connection and runs `SELECT 1`. Getting
+the value `1` confirms that Java connected, authenticated, selected the database
+specified in the URL, and executed a query. It does not validate all schema
+tables or implement store features. The constant query needs no user input.
+Try-with-resources closes the result set, statement, and connection, even if an
+error occurs. A five-second statement timeout also bounds the check query.
+
+Configuration errors identify missing settings. SQL errors show a helpful
+description plus SQLState and vendor error code. Raw driver messages and
+credential values are not printed. Failure returns process exit code 1; success
+returns 0. The Maven Exec plugin runs this test in a separate Java process so a
+failure becomes `BUILD FAILURE` without stopping Maven itself unexpectedly.
+`mvn verify` compiles this manual test but does not execute it.
+
+### Configure your local connection
+
+1. Make sure your MySQL Server is running and the Task 3 `tindatrack` schema
+   exists. Use the same server host/port and MySQL account you use in Workbench.
+2. From the project root, copy the safe example only if no local file exists:
+
+   ```powershell
+   if (-not (Test-Path -LiteralPath 'config/database.properties')) {
+       Copy-Item -LiteralPath 'config/database.properties.example' -Destination 'config/database.properties'
+   }
+   ```
+
+3. Open `config/database.properties` in VS Code and fill in these settings:
+
+   ```properties
+   db.url=jdbc:mysql://localhost:3306/tindatrack
+   db.username=YOUR_MYSQL_USERNAME
+   db.password=YOUR_MYSQL_PASSWORD
+   ```
+
+   The names above are placeholders. Enter actual values only in your local
+   ignored file, never in the example, SQL script, Java source, or chat. All three
+   settings must be nonblank. Keep credentials out of the URL. Password text is
+   not trimmed; Java properties interpret backslashes as escapes, so a literal
+   backslash must be written as `\\`. This file uses UTF-8.
+
+4. Select Java 21 with the PowerShell commands above, then run:
+
+   ```powershell
+   mvn verify
+   mvn compile exec:exec
+   ```
+
+5. Expect `Database connection successful: SELECT 1 returned 1.` followed by
+   `BUILD SUCCESS`. No rows are inserted, updated, or deleted.
+
+The Maven command runs from the project root automatically. If launching the
+test directly through an IDE, set its working directory to the folder containing
+`pom.xml`. Local properties are read each time a connection is opened; after
+editing the file, rerun the test.
+
+### Connection troubleshooting and checklist
+
+- **Create config/database.properties:** copy the example and fill it in.
+- **Set db.username or db.password:** the setting is missing or blank.
+- **Access denied (1045/1044):** check the MySQL account, password, and privileges
+  on `tindatrack`. These are MySQL credentials, not a Windows account or a future
+  TindaTrack application login.
+- **Database not found (1049):** check the database name in the URL and run the
+  Task 3 script on that same server.
+- **Cannot connect (SQLState starting with 08):** check that MySQL Server is
+  running and that the host/port match Workbench. If the server requires TLS,
+  configure its trusted certificates with Connector/J; this project does not
+  disable SSL or enable public-key retrieval as a workaround.
+- **Other SQL errors:** use the reported SQLState and vendor error code when
+  troubleshooting. Keep passwords out of shared error reports.
+
+- [ ] `mvn verify` succeeds with Java 21.
+- [ ] Only the ignored local file contains your real credentials.
+- [ ] `mvn compile exec:exec` prints the success message and `BUILD SUCCESS`.
+- [ ] A missing/incorrect local setting produces a clear failure message.
+- [ ] `mvn javafx:run` still opens the welcome window independently of MySQL.
+
+The build and configuration-failure paths can be checked without credentials.
+A successful live connection must be verified using your own local account.
+
+References: [Connector/J Maven dependency](https://dev.mysql.com/doc/connector-j/en/connector-j-installing-maven.html),
+[Connector/J 9.7.0](https://dev.mysql.com/doc/relnotes/connector-j/en/news-9-7-0.html),
+and [Maven Exec Java process configuration](https://www.mojohaus.org/exec-maven-plugin/examples/example-exec-for-java-programs.html).
+
+## MySQL schema - Task 3
+
+Use MySQL Server 8.0.16 or newer and MySQL Workbench. Workbench is the graphical
+client; MySQL Server must also be installed and running. A MySQL command-line
+client was found on the development machine, but the script has not been
+executed against a server as part of this task.
+
+`database/schema.sql` follows the five tables and two foreign-key relationships
+in RTM Part D, `(D.3) Schema.pdf`. The columns are:
+
+| Table | Columns from the RTM |
+| --- | --- |
+| `users` | `user_id`, `full_name`, `username`, `password_hash`, `created_at` |
+| `products` | `product_id`, `name`, `price`, `stock_qty`, `expiration_date` |
+| `customers` | `customer_id`, `name`, `balance` |
+| `credit_transactions` | `transaction_id`, `customer_id`, `items`, `amount`, `transaction_date` |
+| `payments` | `payment_id`, `customer_id`, `amount`, `payment_date` |
+
+Each ID is a primary key. `credit_transactions.customer_id` and
+`payments.customer_id` reference `customers.customer_id`. One customer can have
+many credit transactions and payments. No extra tables or relationships are added.
+
+### SQL details chosen for implementation
+
+The diagram specifies names and relationships, but does not specify SQL data
+types, string lengths, defaults, nullability, or referential actions. This script
+makes the following choices:
+
+- Database name: `tindatrack`, with Unicode `utf8mb4` encoding and
+  `utf8mb4_unicode_ci` collation. Text comparisons, including usernames, are
+  case-insensitive under this collation.
+- IDs: `INT AUTO_INCREMENT` so MySQL assigns each new record its ID.
+- Names: `VARCHAR(100)` for people and `VARCHAR(150)` for products.
+  Usernames use `VARCHAR(50)` and must be unique.
+- `password_hash`: `VARCHAR(255)`, reserved for a future password hash.
+  The schema does not perform hashing or implement authentication.
+- Money: `DECIMAL(10,2)`, matching RTM NFR-05. Prices and balances cannot be
+  negative. Credit and payment amounts must be greater than zero.
+- Stock: a nonnegative `INT`, defaulting to zero. Customer balances default to
+  `0.00`.
+- Expiration: an optional `DATE`; `NULL` means no expiration date was recorded.
+- Record times: `DATETIME DEFAULT CURRENT_TIMESTAMP` for `created_at`,
+  `transaction_date`, and `payment_date`.
+- Items: `TEXT`, preserving the single `items` field in the RTM.
+- All other fields are required (`NOT NULL`).
+- Tables use InnoDB to support foreign keys. `RESTRICT` prevents deleting or
+  changing a referenced customer ID while financial records still reference it.
+- `CHECK` constraints enforce the numeric rules. MySQL versions before 8.0.16
+  do not enforce these checks.
+
+The script creates `customers` before its dependent tables. MySQL creates the
+indexes required by the foreign keys. There are no sample accounts, products,
+customers, transactions, or payments.
+
+`IF NOT EXISTS` makes repeat execution skip existing objects. It does not verify
+or update an existing table's structure. If a `tindatrack` database already has
+tables, inspect them before execution and compare their definitions afterward.
+Do not treat this file as a migration script. MySQL DDL is not an all-or-nothing
+transaction: if a statement fails, earlier successful statements can remain.
+
+### Run in MySQL Workbench
+
+1. Open Workbench and connect to your local MySQL Server using your own account.
+   Enter credentials only in Workbench; do not put passwords in this script.
+2. Open a query tab and run `SELECT VERSION();`. Confirm MySQL 8.0.16 or newer.
+3. Choose **File > Open SQL Script** and open this file:
+   `C:\Users\andrei\Downloads\CMSC 128 TindaTrack\TindaTrack\database\schema.sql`.
+4. Read the script. Clear any selected text, then choose **Query > Execute
+   (All or Selection)** to run the complete script. The account needs permission
+   to create the database and its tables.
+5. Check **Action Output** for errors. On repeat runs, notes about existing
+   objects are expected. If execution fails, fix the reported issue before
+   continuing; do not delete existing objects to retry.
+6. Refresh the **Schemas** panel and expand **tindatrack > Tables**. You should
+   see all five tables.
+7. In a separate query tab, run the read-only checks below.
+
+```sql
+USE tindatrack;
+SHOW TABLES;
+SHOW CREATE TABLE users;
+SHOW CREATE TABLE products;
+SHOW CREATE TABLE customers;
+SHOW CREATE TABLE credit_transactions;
+SHOW CREATE TABLE payments;
+
+-- For a newly created database, every count should be zero.
+SELECT 'users' AS table_name, COUNT(*) AS row_count FROM users
+UNION ALL SELECT 'products', COUNT(*) FROM products
+UNION ALL SELECT 'customers', COUNT(*) FROM customers
+UNION ALL SELECT 'credit_transactions', COUNT(*) FROM credit_transactions
+UNION ALL SELECT 'payments', COUNT(*) FROM payments;
+```
+
+Use the `SHOW CREATE TABLE` results to confirm primary keys, the unique username,
+checks, and the two customer foreign keys. Existing data, if any, should remain.
+
+### Database test checklist
+
+- [ ] Server version is MySQL 8.0.16 or newer.
+- [ ] The script executes without errors.
+- [ ] All five tables and their RTM columns are present.
+- [ ] Every table has its expected primary key.
+- [ ] Usernames have a unique constraint; money uses `DECIMAL(10,2)`.
+- [ ] The numeric checks and both customer foreign keys are present.
+- [ ] A fresh database contains no rows.
+- [ ] Running the script again does not remove existing tables or data.
+
+This schema alone does not update a customer's balance when credit or payment
+rows are added, and it does not reject payments above the customer's balance.
+Those operations will need coordinated Java/JDBC transactions and validation
+when customer credit is implemented. No triggers or feature logic are added now.
+
+MySQL references: [CHECK constraints](https://dev.mysql.com/doc/refman/8.0/en/create-table-check-constraints.html)
+and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html).
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Task 1 commit
-message: `Set up Java 21 JavaFX Maven project structure`.
+Git commands are managed manually by the project owner. Suggested Task 4 commit
+message: `Add MySQL JDBC connection utility and manual connection test`.
 
-Stop after testing Task 1. Task 2 requires explicit approval.
+Stop after testing Task 4 and wait for approval before starting further work.
