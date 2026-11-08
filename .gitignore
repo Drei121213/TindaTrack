@@ -22,3 +22,32 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Maven build output and optional project-local dependency cache
+target/
+.m2/
+
+# IDE and editor workspace files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+nbproject/private/
+
+# Local credentials (safe example files may be shared)
+.env
+.env.*
+!.env.example
+!.env.*.example
+config/local.properties
+config/database.properties
+src/main/resources/database.properties
+src/main/resources/database-local.properties
+
+# Operating system files
+Thumbs.db
+.DS_Store
