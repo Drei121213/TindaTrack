@@ -1,0 +1,6 @@
+# Copy to config/database.properties and fill in your own MySQL account.
+# The local copy is ignored and is not packaged as an application resource.
+# Keep credentials out of the URL. Leave this example free of real passwords.
+db.url=jdbc:mysql://localhost:3306/tindatrack
+db.username=
+db.password=
