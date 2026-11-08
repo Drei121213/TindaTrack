@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="tindatrack.core.WelcomeController"
+           styleClass="welcome-root">
+    <children>
+        <VBox alignment="CENTER" spacing="16" maxWidth="540" maxHeight="280"
+              styleClass="welcome-card">
+            <children>
+                <Label text="TINDATRACK" styleClass="brand-label" />
+                <Label fx:id="welcomeMessage" wrapText="true"
+                       textAlignment="CENTER" styleClass="welcome-title" />
+                <Label text="Your sari-sari store companion."
+                       wrapText="true" textAlignment="CENTER"
+                       styleClass="welcome-subtitle" />
+            </children>
+        </VBox>
+    </children>
+</StackPane>

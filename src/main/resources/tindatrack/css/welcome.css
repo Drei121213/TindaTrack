@@ -1,0 +1,30 @@
+.welcome-root {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-background-color: #edf4f0;
+    -fx-padding: 24;
+}
+
+.welcome-card {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 18;
+    -fx-border-color: #d6e4db;
+    -fx-border-radius: 18;
+    -fx-padding: 36;
+}
+
+.brand-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #347552;
+}
+
+.welcome-title {
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #203d2e;
+}
+
+.welcome-subtitle {
+    -fx-font-size: 16px;
+    -fx-text-fill: #52675b;
+}
