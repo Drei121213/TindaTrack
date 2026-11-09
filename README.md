@@ -3,17 +3,18 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 2, Task 3
+## Current scope: Day 2 complete
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
 from SB12. A successful login opens a temporary owner home screen with a
-welcome message and Logout. Continue as Guest still shows a placeholder.
+welcome message and Logout. **Continue as Guest (View Only)** opens product
+search and customer balances without an owner account.
 
 Day 1 includes the MySQL schema in `database/schema.sql`, a shared connection
 utility, and a manual command-line connection test. Registration and login use
-that connection utility and the existing `users` table. Guest sessions are
-scheduled for Day 2, Task 4.
+that connection utility and the existing `users` table. Guest Mode reads product
+names, prices, stock counts, customer names, and balances from the existing schema.
 
 ## Requirements
 
@@ -50,7 +51,11 @@ TindaTrack/
     |   |   |   |-- RegistrationController.java
     |   |   |   `-- UserDao.java
     |   |   |-- inventory/package-info.java
-    |   |   |-- guest/package-info.java
+    |   |   |-- guest/
+    |   |   |   |-- package-info.java
+    |   |   |   |-- GuestController.java
+    |   |   |   |-- GuestService.java
+    |   |   |   `-- GuestSession.java
     |   |   |-- credit/package-info.java
     |   |   `-- core/
     |   |       |-- package-info.java
@@ -58,10 +63,12 @@ TindaTrack/
     |   |       |-- DatabaseConnectionTest.java
     |   |       |-- OwnerHomeController.java
     |   |       |-- PasswordHasher.java
+    |   |       |-- SessionState.java
     |   |       `-- WelcomeController.java
     |   `-- resources/tindatrack/
     |       |-- fxml/
     |       |   |-- .gitkeep
+    |       |   |-- guest.fxml
     |       |   |-- login.fxml
     |       |   |-- owner-home.fxml
     |       |   |-- register.fxml
@@ -159,7 +166,8 @@ setup; the generated JAR is not a standalone application with bundled JavaFX.
 - [ ] Correct owner credentials show a welcome message and Logout.
 - [ ] Logout returns to an empty login form.
 - [ ] Create Account opens the registration pop-up when no owner exists.
-- [ ] Continue as Guest displays `Guest access is coming soon.`
+- [ ] Continue as Guest opens the view-only product and credit tabs.
+- [ ] Exit Guest Mode returns to a fresh login form.
 - [ ] Closing the window returns to the terminal with `BUILD SUCCESS`.
 - [ ] No FXML loading errors or CSS warnings appear in the terminal.
 
@@ -215,7 +223,7 @@ candidate hash with the same settings and compares the bytes using
 calculation and gets the same error as an incorrect password.
 
 On a match, the service returns an `OwnerSession` containing the owner ID and
-display name. `TindaTrackApplication` holds it in memory and switches the scene
+display name. `TindaTrackApplication` stores it in `SessionState` and switches the scene
 to `owner-home.fxml`. Logout clears the session and loads a fresh login form.
 Database failures show `Cannot connect to the database. Please try again.`
 
@@ -229,6 +237,37 @@ Database failures show `Cannot connect to the database. Please try again.`
    username. Both attempts should show `Invalid username or password.`
 4. Enter the correct credentials. Confirm the owner home screen greets you
    by name. Click **Logout**, confirm both fields are empty, and sign in again.
+
+## Guest Mode
+
+UC10 and storyboards SB10 and SB11 define the guest views. **Continue as Guest
+(View Only)** creates an in-memory `GuestSession` without asking for credentials.
+An `OwnerSession` represents a registered owner who has passed the password
+check. The guest session carries no account details.
+
+`GuestController` loads each table on a background thread. `GuestService`
+checks that its guest session is still active before opening a JDBC connection
+in read-only mode. Its prepared SELECT statements return the allowed columns.
+Product search matches literal text in the product name. An empty search shows
+all products. Credit shows customer names and their current balances.
+
+The guest tables are read-only. `UserDao` checks the shared session before account
+lookup or creation and tells the caller to return to login when a session is
+active. **Exit Guest Mode** clears the guest session. From login, a user can
+sign in or choose **Create Account** if the owner table is empty.
+
+### Test Guest Mode
+
+1. Start MySQL and run `mvn javafx:run`. Leave the login fields blank and choose
+   **Continue as Guest (View Only)**. Confirm the Products tab shows name,
+   price, and stock.
+2. If your database has products, search for part of a known name. Then search
+   for a name that cannot match and confirm `No products found.` appears.
+   Clear the search and submit again to see all products.
+3. Open **Credit (Utang)** and check the customer names and balances. Empty
+   product and customer tables show an empty-state message on a fresh schema.
+4. Choose **Exit Guest Mode**. Confirm that the login form opens and that owner
+   sign-in or first-owner registration works as usual.
 
 ## Owner registration
 
@@ -507,7 +546,25 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 2, Task 3
-commit message is `Authenticate store owner and add logout`.
+Git commands are managed manually by the project owner. Suggested Day 2, Task 5
+commit message is `Document Day 2 integration verification`.
 
-Stop after testing Day 2, Task 3 and wait for approval before starting guest access.
+## Day 2 integration verification
+
+With Java 21 selected and MySQL running, use these commands from the project root.
+
+```powershell
+mvn verify
+mvn compile exec:exec
+mvn javafx:run
+```
+
+The first command builds the project. The second runs the Day 1 connection check.
+Use the registration, login, and Guest Mode checklists above after launching the
+app. First-owner registration is best checked with an empty test database.
+
+Task 5 exercised the JavaFX flows and database services against a disposable
+MySQL instance. The checks covered registration, validation, duplicate rejection,
+salted password storage, login, logout, guest search and balances, service-level
+access restrictions, and recovery after a refused database connection. The Day 1
+schema loaded successfully and its `SELECT 1` connection check passed.

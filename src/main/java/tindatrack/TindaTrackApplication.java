@@ -11,13 +11,17 @@ import javafx.stage.Stage;
 import tindatrack.authentication.LoginController;
 import tindatrack.authentication.OwnerSession;
 import tindatrack.core.OwnerHomeController;
+import tindatrack.core.SessionState;
+import tindatrack.guest.GuestController;
+import tindatrack.guest.GuestService;
+import tindatrack.guest.GuestSession;
 
 /**
  * Entry point for the TindaTrack desktop application.
  */
 public class TindaTrackApplication extends Application {
 
-    private OwnerSession currentOwner;
+    private final SessionState sessions = new SessionState();
 
     /**
      * Starts the JavaFX runtime and calls start on the JavaFX application thread.
@@ -39,14 +43,20 @@ public class TindaTrackApplication extends Application {
     }
 
     private void showLogin(Stage stage) throws IOException {
-        currentOwner = null;
+        sessions.clear();
         FXMLLoader loader = loadView("login.fxml");
         LoginController controller = loader.getController();
-        controller.setOnAuthenticated(owner -> {
+        controller.configure(sessions, owner -> {
             try {
                 showOwnerHome(stage, owner);
             } catch (IOException exception) {
-                controller.showOwnerScreenError();
+                controller.showScreenError("the owner screen");
+            }
+        }, () -> {
+            try {
+                showGuestMode(stage);
+            } catch (IOException exception) {
+                controller.showScreenError("Guest Mode");
             }
         });
         if (stage.getScene() == null) {
@@ -60,15 +70,27 @@ public class TindaTrackApplication extends Application {
         FXMLLoader loader = loadView("owner-home.fxml");
         OwnerHomeController controller = loader.getController();
 
-        currentOwner = owner;
-        controller.configure(currentOwner.fullName(), () -> {
-            try {
-                showLogin(stage);
-            } catch (IOException exception) {
-                stage.close();
-            }
-        });
+        sessions.begin(owner);
+        controller.configure(owner.fullName(), () -> returnToLogin(stage));
         stage.getScene().setRoot(loader.getRoot());
+    }
+
+    private void showGuestMode(Stage stage) throws IOException {
+        FXMLLoader loader = loadView("guest.fxml");
+        GuestController controller = loader.getController();
+
+        GuestSession guest = new GuestSession();
+        sessions.begin(guest);
+        controller.configure(new GuestService(sessions, guest), () -> returnToLogin(stage));
+        stage.getScene().setRoot(loader.getRoot());
+    }
+
+    private void returnToLogin(Stage stage) {
+        try {
+            showLogin(stage);
+        } catch (IOException exception) {
+            stage.close();
+        }
     }
 
     private FXMLLoader loadView(String fileName) throws IOException {

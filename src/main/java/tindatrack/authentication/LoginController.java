@@ -18,6 +18,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import tindatrack.core.SessionState;
+import tindatrack.core.SessionState.AccessDeniedException;
 
 /** Handles input and feedback on the login screen. */
 public class LoginController {
@@ -40,20 +42,25 @@ public class LoginController {
     private Hyperlink createAccountLink;
 
     private boolean registrationAvailable;
+    private UserDao users;
     private Consumer<OwnerSession> onAuthenticated;
+    private Runnable onGuestAccess;
 
-    public void setOnAuthenticated(Consumer<OwnerSession> onAuthenticated) {
+    public void configure(SessionState sessions, Consumer<OwnerSession> onAuthenticated,
+                          Runnable onGuestAccess) {
+        users = new UserDao(sessions);
         this.onAuthenticated = onAuthenticated;
+        this.onGuestAccess = onGuestAccess;
+        checkRegistrationAvailability();
     }
 
-    public void showOwnerScreenError() {
-        showFeedback("Could not open the owner screen. Please try again.", true);
+    public void showScreenError(String screenName) {
+        showFeedback("Could not open " + screenName + ". Please try again.", true);
     }
 
     @FXML
     private void initialize() {
         createAccountLink.managedProperty().bind(createAccountLink.visibleProperty());
-        checkRegistrationAvailability();
     }
 
     @FXML
@@ -80,7 +87,7 @@ public class LoginController {
             @Override
             protected Optional<OwnerSession> call() throws Exception {
                 try {
-                    return new AuthenticationService().authenticate(username, password);
+                    return new AuthenticationService(users).authenticate(username, password);
                 } finally {
                     Arrays.fill(password, '\0');
                 }
@@ -99,7 +106,9 @@ public class LoginController {
         signIn.setOnFailed(event -> {
             loginForm.setDisable(false);
             Throwable failure = signIn.getException();
-            if (failure instanceof IOException || failure instanceof SQLException) {
+            if (failure instanceof AccessDeniedException denied) {
+                showFeedback(denied.getMessage(), true);
+            } else if (failure instanceof IOException || failure instanceof SQLException) {
                 showFeedback("Cannot connect to the database. Please try again.", true);
             } else {
                 showFeedback("Could not sign in. Please try again.", true);
@@ -125,6 +134,7 @@ public class LoginController {
             Scene scene = new Scene(loader.load(), 500, 600);
             scene.getStylesheets().addAll(createAccountLink.getScene().getStylesheets());
             RegistrationController controller = loader.getController();
+            controller.setUserDao(users);
 
             Stage dialog = new Stage();
             dialog.initOwner(createAccountLink.getScene().getWindow());
@@ -163,7 +173,7 @@ public class LoginController {
         Task<Boolean> check = new Task<>() {
             @Override
             protected Boolean call() throws Exception {
-                return new UserDao().hasOwner();
+                return users.hasOwner();
             }
         };
         check.setOnSucceeded(event -> {
@@ -187,7 +197,7 @@ public class LoginController {
     @FXML
     private void handleGuestAccess() {
         passwordField.clear();
-        showFeedback("Guest access is coming soon.", false);
+        onGuestAccess.run();
     }
 
     private void showFeedback(String message, boolean error) {

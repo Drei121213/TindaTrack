@@ -10,6 +10,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import tindatrack.core.PasswordHasher;
+import tindatrack.core.SessionState.AccessDeniedException;
 
 /** Validates the owner registration form and displays the result of saving it. */
 public class RegistrationController {
@@ -29,6 +30,11 @@ public class RegistrationController {
     @FXML private Button cancelButton;
 
     private String createdUsername;
+    private UserDao users;
+
+    void setUserDao(UserDao users) {
+        this.users = users;
+    }
 
     @FXML
     private void handleCreateAccount() {
@@ -48,7 +54,7 @@ public class RegistrationController {
             protected UserDao.CreateResult call() throws Exception {
                 try {
                     String passwordHash = PasswordHasher.hash(password);
-                    return new UserDao().createOwner(fullName, username, passwordHash);
+                    return users.createOwner(fullName, username, passwordHash);
                 } finally {
                     Arrays.fill(password, '\0');
                 }
@@ -71,7 +77,9 @@ public class RegistrationController {
         });
         save.setOnFailed(event -> {
             setSaving(false);
-            showError(formError, "Account was not created. Please try again.");
+            String message = save.getException() instanceof AccessDeniedException denied
+                    ? denied.getMessage() : "Account was not created. Please try again.";
+            showError(formError, message);
         });
 
         Thread worker = new Thread(save, "tindatrack-create-owner");

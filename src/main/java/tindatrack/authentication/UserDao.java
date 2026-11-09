@@ -9,9 +9,16 @@ import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.Optional;
 
 import tindatrack.core.DatabaseConnection;
+import tindatrack.core.SessionState;
 
 /** Reads and creates owner accounts in MySQL. */
 public class UserDao {
+
+    private final SessionState sessions;
+
+    public UserDao(SessionState sessions) {
+        this.sessions = sessions;
+    }
 
     public enum CreateResult {
         CREATED, USERNAME_TAKEN, OWNER_EXISTS
@@ -22,6 +29,7 @@ public class UserDao {
     }
 
     Optional<LoginAccount> findByUsername(String username) throws IOException, SQLException {
+        sessions.requireSignedOut();
         String sql = "SELECT user_id, full_name, password_hash FROM users WHERE username = ?";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -38,6 +46,7 @@ public class UserDao {
     }
 
     public boolean hasOwner() throws IOException, SQLException {
+        sessions.requireSignedOut();
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM users LIMIT 1");
              ResultSet rows = statement.executeQuery()) {
@@ -47,6 +56,7 @@ public class UserDao {
 
     public CreateResult createOwner(String fullName, String username, String passwordHash)
             throws IOException, SQLException {
+        sessions.requireSignedOut();
         // MySQL releases this registration lock when this connection closes.
         try (Connection connection = DatabaseConnection.getConnection()) {
             lockOwnerRegistration(connection);
