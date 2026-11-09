@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.util.Optional;
 
 import tindatrack.core.DatabaseConnection;
 
@@ -14,6 +15,26 @@ public class UserDao {
 
     public enum CreateResult {
         CREATED, USERNAME_TAKEN, OWNER_EXISTS
+    }
+
+    /** The hash is needed only while checking credentials. */
+    record LoginAccount(int userId, String fullName, String passwordHash) {
+    }
+
+    Optional<LoginAccount> findByUsername(String username) throws IOException, SQLException {
+        String sql = "SELECT user_id, full_name, password_hash FROM users WHERE username = ?";
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, username);
+            try (ResultSet row = statement.executeQuery()) {
+                if (row.next()) {
+                    return Optional.of(new LoginAccount(
+                            row.getInt("user_id"), row.getString("full_name"),
+                            row.getString("password_hash")));
+                }
+                return Optional.empty();
+            }
+        }
     }
 
     public boolean hasOwner() throws IOException, SQLException {

@@ -1,6 +1,10 @@
 package tindatrack.authentication;
 
 import java.io.IOException;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
@@ -11,6 +15,7 @@ import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -18,6 +23,9 @@ import javafx.stage.Stage;
 public class LoginController {
 
     private static final PseudoClass ERROR = PseudoClass.getPseudoClass("error");
+
+    @FXML
+    private VBox loginForm;
 
     @FXML
     private TextField usernameField;
@@ -32,6 +40,15 @@ public class LoginController {
     private Hyperlink createAccountLink;
 
     private boolean registrationAvailable;
+    private Consumer<OwnerSession> onAuthenticated;
+
+    public void setOnAuthenticated(Consumer<OwnerSession> onAuthenticated) {
+        this.onAuthenticated = onAuthenticated;
+    }
+
+    public void showOwnerScreenError() {
+        showFeedback("Could not open the owner screen. Please try again.", true);
+    }
 
     @FXML
     private void initialize() {
@@ -41,7 +58,8 @@ public class LoginController {
 
     @FXML
     private void handleLogin() {
-        if (usernameField.getText().isBlank()) {
+        String username = usernameField.getText().strip();
+        if (username.isEmpty()) {
             showFeedback("Please fill in all fields.", true);
             usernameField.requestFocus();
             return;
@@ -53,8 +71,45 @@ public class LoginController {
             return;
         }
 
+        char[] password = passwordField.getText().toCharArray();
         passwordField.clear();
-        showFeedback("Sign-in is coming soon.", false);
+        loginForm.setDisable(true);
+        showFeedback("Signing in...", false);
+
+        Task<Optional<OwnerSession>> signIn = new Task<>() {
+            @Override
+            protected Optional<OwnerSession> call() throws Exception {
+                try {
+                    return new AuthenticationService().authenticate(username, password);
+                } finally {
+                    Arrays.fill(password, '\0');
+                }
+            }
+        };
+        signIn.setOnSucceeded(event -> {
+            loginForm.setDisable(false);
+            Optional<OwnerSession> owner = signIn.getValue();
+            if (owner.isPresent()) {
+                onAuthenticated.accept(owner.get());
+            } else {
+                showFeedback("Invalid username or password.", true);
+                passwordField.requestFocus();
+            }
+        });
+        signIn.setOnFailed(event -> {
+            loginForm.setDisable(false);
+            Throwable failure = signIn.getException();
+            if (failure instanceof IOException || failure instanceof SQLException) {
+                showFeedback("Cannot connect to the database. Please try again.", true);
+            } else {
+                showFeedback("Could not sign in. Please try again.", true);
+            }
+            passwordField.requestFocus();
+        });
+
+        Thread worker = new Thread(signIn, "tindatrack-sign-in");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     @FXML
@@ -119,7 +174,9 @@ public class LoginController {
         check.setOnFailed(event -> {
             createAccountLink.setText("Retry account check");
             createAccountLink.setVisible(true);
-            showFeedback("Could not check account availability. Please try again.", true);
+            if (feedbackLabel.getText().isEmpty()) {
+                showFeedback("Could not check account availability. Please try again.", true);
+            }
         });
 
         Thread worker = new Thread(check, "tindatrack-check-owner");

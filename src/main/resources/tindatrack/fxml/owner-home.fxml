@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="tindatrack.core.OwnerHomeController"
+           styleClass="login-root">
+    <VBox alignment="CENTER" spacing="16" maxWidth="420" maxHeight="-Infinity"
+          styleClass="login-card">
+        <Label text="TindaTrack" styleClass="login-subtitle" />
+        <Label fx:id="ownerGreeting" wrapText="true" textAlignment="CENTER"
+               styleClass="login-title" />
+        <Label text="You are signed in as the store owner." wrapText="true"
+               textAlignment="CENTER" styleClass="login-subtitle" />
+        <Button text="Logout" onAction="#handleLogout" styleClass="login-button" />
+    </VBox>
+</StackPane>

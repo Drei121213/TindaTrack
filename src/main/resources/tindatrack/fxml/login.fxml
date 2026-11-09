@@ -12,7 +12,7 @@
            xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="tindatrack.authentication.LoginController"
            styleClass="login-root">
-    <VBox alignment="CENTER" spacing="12" maxWidth="420" maxHeight="-Infinity"
+    <VBox fx:id="loginForm" alignment="CENTER" spacing="12" maxWidth="420" maxHeight="-Infinity"
           styleClass="login-card">
         <Label text="TindaTrack" styleClass="login-title" />
         <Label text="Sign in to manage your store" styleClass="login-subtitle" />

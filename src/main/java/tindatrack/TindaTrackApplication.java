@@ -8,11 +8,16 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import tindatrack.authentication.LoginController;
+import tindatrack.authentication.OwnerSession;
+import tindatrack.core.OwnerHomeController;
 
 /**
  * Entry point for the TindaTrack desktop application.
  */
 public class TindaTrackApplication extends Application {
+
+    private OwnerSession currentOwner;
 
     /**
      * Starts the JavaFX runtime and calls start on the JavaFX application thread.
@@ -26,22 +31,63 @@ public class TindaTrackApplication extends Application {
      */
     @Override
     public void start(Stage primaryStage) throws IOException {
-        URL fxmlUrl = getClass().getResource("/tindatrack/fxml/login.fxml");
-        URL cssUrl = getClass().getResource("/tindatrack/css/login.css");
-
-        if (fxmlUrl == null || cssUrl == null) {
-            throw new IOException("The login FXML or CSS resource could not be found.");
-        }
-
-        FXMLLoader loader = new FXMLLoader(fxmlUrl);
-        Parent root = loader.load();
-        Scene scene = new Scene(root, 640, 560);
-        scene.getStylesheets().add(cssUrl.toExternalForm());
-
         primaryStage.setTitle("TindaTrack");
-        primaryStage.setScene(scene);
         primaryStage.setMinWidth(460);
         primaryStage.setMinHeight(540);
+        showLogin(primaryStage);
         primaryStage.show();
+    }
+
+    private void showLogin(Stage stage) throws IOException {
+        currentOwner = null;
+        FXMLLoader loader = loadView("login.fxml");
+        LoginController controller = loader.getController();
+        controller.setOnAuthenticated(owner -> {
+            try {
+                showOwnerHome(stage, owner);
+            } catch (IOException exception) {
+                controller.showOwnerScreenError();
+            }
+        });
+        if (stage.getScene() == null) {
+            stage.setScene(createScene(loader.getRoot()));
+        } else {
+            stage.getScene().setRoot(loader.getRoot());
+        }
+    }
+
+    private void showOwnerHome(Stage stage, OwnerSession owner) throws IOException {
+        FXMLLoader loader = loadView("owner-home.fxml");
+        OwnerHomeController controller = loader.getController();
+
+        currentOwner = owner;
+        controller.configure(currentOwner.fullName(), () -> {
+            try {
+                showLogin(stage);
+            } catch (IOException exception) {
+                stage.close();
+            }
+        });
+        stage.getScene().setRoot(loader.getRoot());
+    }
+
+    private FXMLLoader loadView(String fileName) throws IOException {
+        URL fxmlUrl = getClass().getResource("/tindatrack/fxml/" + fileName);
+        if (fxmlUrl == null) {
+            throw new IOException("The " + fileName + " layout could not be found.");
+        }
+        FXMLLoader loader = new FXMLLoader(fxmlUrl);
+        loader.load();
+        return loader;
+    }
+
+    private Scene createScene(Parent root) throws IOException {
+        URL cssUrl = getClass().getResource("/tindatrack/css/login.css");
+        if (cssUrl == null) {
+            throw new IOException("The login stylesheet could not be found.");
+        }
+        Scene scene = new Scene(root, 640, 560);
+        scene.getStylesheets().add(cssUrl.toExternalForm());
+        return scene;
     }
 }

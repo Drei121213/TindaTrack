@@ -3,16 +3,17 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 2, Task 2
+## Current scope: Day 2, Task 3
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
-from SB12. Login and Continue as Guest still show placeholder messages.
+from SB12. A successful login opens a temporary owner home screen with a
+welcome message and Logout. Continue as Guest still shows a placeholder.
 
 Day 1 includes the MySQL schema in `database/schema.sql`, a shared connection
-utility, and a manual command-line connection test. Registration uses that
-connection utility and the existing `users` table. Credential verification and
-guest sessions are scheduled for later Day 2 tasks.
+utility, and a manual command-line connection test. Registration and login use
+that connection utility and the existing `users` table. Guest sessions are
+scheduled for Day 2, Task 4.
 
 ## Requirements
 
@@ -43,7 +44,9 @@ TindaTrack/
     |   |   |-- TindaTrackApplication.java
     |   |   |-- authentication/
     |   |   |   |-- package-info.java
+    |   |   |   |-- AuthenticationService.java
     |   |   |   |-- LoginController.java
+    |   |   |   |-- OwnerSession.java
     |   |   |   |-- RegistrationController.java
     |   |   |   `-- UserDao.java
     |   |   |-- inventory/package-info.java
@@ -53,12 +56,14 @@ TindaTrack/
     |   |       |-- package-info.java
     |   |       |-- DatabaseConnection.java
     |   |       |-- DatabaseConnectionTest.java
+    |   |       |-- OwnerHomeController.java
     |   |       |-- PasswordHasher.java
     |   |       `-- WelcomeController.java
     |   `-- resources/tindatrack/
     |       |-- fxml/
     |       |   |-- .gitkeep
     |       |   |-- login.fxml
+    |       |   |-- owner-home.fxml
     |       |   |-- register.fxml
     |       |   `-- welcome.fxml
     |       `-- css/
@@ -147,8 +152,12 @@ setup; the generated JAR is not a standalone application with bundled JavaFX.
   and focuses Username.
 - [ ] Entering a username and pressing Enter with Password blank gives the same
   message and focuses Password.
-- [ ] Password characters are masked. Submitting both fields displays
-  `Sign-in is coming soon.` and clears the password.
+- [ ] Password characters are masked. Submitting both fields clears the
+  password input while login runs.
+- [ ] A wrong password and an unknown username both show
+  `Invalid username or password.`
+- [ ] Correct owner credentials show a welcome message and Logout.
+- [ ] Logout returns to an empty login form.
 - [ ] Create Account opens the registration pop-up when no owner exists.
 - [ ] Continue as Guest displays `Guest access is coming soon.`
 - [ ] Closing the window returns to the terminal with `BUILD SUCCESS`.
@@ -190,6 +199,36 @@ The Login button's `onAction="#handleLogin"` calls the controller's
 `handleLogin()` method. Login is the default button, so Enter can submit
 the form. The controller checks the fields and updates the feedback label.
 `login.css` styles the form and makes error messages red.
+
+## Owner login and logout
+
+`LoginController` checks for blank fields and starts a JavaFX `Task` to check
+credentials. The form is disabled while the task runs. `UserDao.findByUsername()`
+binds the username to a prepared SELECT and reads the owner's ID, full name, and
+stored hash. The database lookup and password calculation run off the JavaFX
+application thread.
+
+`AuthenticationService` calls `PasswordHasher.verify()`. Verification reads the
+salt and checks the format and iteration count saved by registration. It derives a
+candidate hash with the same settings and compares the bytes using
+`MessageDigest.isEqual()`. An unknown username still runs the password
+calculation and gets the same error as an incorrect password.
+
+On a match, the service returns an `OwnerSession` containing the owner ID and
+display name. `TindaTrackApplication` holds it in memory and switches the scene
+to `owner-home.fxml`. Logout clears the session and loads a fresh login form.
+Database failures show `Cannot connect to the database. Please try again.`
+
+### Test login
+
+1. Start MySQL and launch with `mvn javafx:run`. Use the owner account you
+   created during registration. If this is a fresh database, create the owner
+   using the steps below.
+2. Submit empty fields. Expect `Please fill in all fields.`
+3. Try the correct username with a wrong password. Then try an unknown
+   username. Both attempts should show `Invalid username or password.`
+4. Enter the correct credentials. Confirm the owner home screen greets you
+   by name. Click **Logout**, confirm both fields are empty, and sign in again.
 
 ## Owner registration
 
@@ -236,7 +275,7 @@ creation message, and the Create Account link disappears.
    ```
 
    Expect one owner row with `has_expected_hash_format` equal to `1` and
-   `hash_length` equal to `90`. Actual login begins in Day 2, Task 3.
+   `hash_length` equal to `90`. Use that owner's credentials to test login.
 
 `pom.xml` declares JavaFX controls and FXML dependencies, compiles for Java 21,
 and tells the JavaFX Maven plugin which class to launch. This is a simple
@@ -468,7 +507,7 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 2, Task 2
-commit message is `Implement owner registration with salted password hashing`.
+Git commands are managed manually by the project owner. Suggested Day 2, Task 3
+commit message is `Authenticate store owner and add logout`.
 
-Stop after testing Day 2, Task 2 and wait for approval before starting login authentication.
+Stop after testing Day 2, Task 3 and wait for approval before starting guest access.
