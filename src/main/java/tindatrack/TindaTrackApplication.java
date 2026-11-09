@@ -1,9 +1,9 @@
 package tindatrack;
 
-import javafx.application.Application;
 import java.io.IOException;
 import java.net.URL;
 
+import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -22,26 +22,26 @@ public class TindaTrackApplication extends Application {
     }
 
     /**
-     * Loads the welcome layout and displays the application's first window.
+     * Loads the login layout and displays the application's first window.
      */
     @Override
     public void start(Stage primaryStage) throws IOException {
-        URL fxmlUrl = getClass().getResource("/tindatrack/fxml/welcome.fxml");
-        URL cssUrl = getClass().getResource("/tindatrack/css/welcome.css");
+        URL fxmlUrl = getClass().getResource("/tindatrack/fxml/login.fxml");
+        URL cssUrl = getClass().getResource("/tindatrack/css/login.css");
 
         if (fxmlUrl == null || cssUrl == null) {
-            throw new IOException("The welcome FXML or CSS resource could not be found.");
+            throw new IOException("The login FXML or CSS resource could not be found.");
         }
 
         FXMLLoader loader = new FXMLLoader(fxmlUrl);
         Parent root = loader.load();
-        Scene scene = new Scene(root, 720, 460);
+        Scene scene = new Scene(root, 640, 560);
         scene.getStylesheets().add(cssUrl.toExternalForm());
 
         primaryStage.setTitle("TindaTrack");
         primaryStage.setScene(scene);
-        primaryStage.setMinWidth(600);
-        primaryStage.setMinHeight(400);
+        primaryStage.setMinWidth(460);
+        primaryStage.setMinHeight(540);
         primaryStage.show();
     }
 }

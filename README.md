@@ -3,18 +3,18 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 1, Task 4
+## Current scope: Day 2, Task 1
 
-The existing Maven project now opens one FXML welcome window titled
-`TindaTrack`. It displays `Welcome to TindaTrack` with simple CSS styling.
-Close the window using its normal title-bar close button to stop the application.
+The application opens the TindaTrack login screen from RTM storyboard SB01.
+The form has a username, a masked password, and actions for Login, Create
+Account, and Continue as Guest (View Only). Login checks for blank fields.
+Submitting both fields and choosing either alternate action shows a placeholder
+message.
 
-The MySQL schema script is prepared in `database/schema.sql` for manual execution
-in MySQL Workbench. The Java application still shows only the welcome window.
-Task 4 adds a shared database connection utility and a manual command-line
-connection test. The welcome window does not connect to the database.
-Authentication, inventory, expiration alerts, and customer credit features have
-not been implemented.
+Day 1 includes the MySQL schema in `database/schema.sql`, a shared connection
+utility, and a manual command-line connection test. The login screen runs
+independently of MySQL. Account registration, credential verification, and guest
+sessions are scheduled for later Day 2 tasks.
 
 ## Requirements
 
@@ -43,7 +43,9 @@ TindaTrack/
     |-- main/
     |   |-- java/tindatrack/
     |   |   |-- TindaTrackApplication.java
-    |   |   |-- authentication/package-info.java
+    |   |   |-- authentication/
+    |   |   |   |-- package-info.java
+    |   |   |   `-- LoginController.java
     |   |   |-- inventory/package-info.java
     |   |   |-- guest/package-info.java
     |   |   |-- credit/package-info.java
@@ -55,9 +57,11 @@ TindaTrack/
     |   `-- resources/tindatrack/
     |       |-- fxml/
     |       |   |-- .gitkeep
+    |       |   |-- login.fxml
     |       |   `-- welcome.fxml
     |       `-- css/
     |           |-- .gitkeep
+    |           |-- login.css
     |           `-- welcome.css
     `-- test/java/.gitkeep
 ```
@@ -122,7 +126,7 @@ mvn javafx:run
 - `mvn verify` runs the Maven build lifecycle through verification and produces
   `target/tindatrack-1.0-SNAPSHOT.jar`. There are no automated tests yet; Maven
   reporting `No tests to run` is expected.
-- `mvn javafx:run` starts the configured JavaFX entry point and opens the welcome
+- `mvn javafx:run` starts the configured JavaFX entry point and opens the login
   window. Maven stays running while the window is open. Close the window to
   finish the run and see `BUILD SUCCESS` in the terminal.
 
@@ -136,9 +140,16 @@ setup; the generated JAR is not a standalone application with bundled JavaFX.
 - [ ] `mvn compile` ends with `BUILD SUCCESS`.
 - [ ] `mvn verify` ends with `BUILD SUCCESS`.
 - [ ] `mvn javafx:run` opens a window titled `TindaTrack`.
-- [ ] The window displays `Welcome to TindaTrack` and the subtitle.
-- [ ] A white card appears on a light green background with readable text.
-- [ ] Resizing the window keeps the content centered and readable.
+- [ ] The form shows Username, Password, Login, Continue as Guest (View Only),
+  and Create Account.
+- [ ] Clicking Login with both fields empty displays `Please fill in all fields.`
+  and focuses Username.
+- [ ] Entering a username and pressing Enter with Password blank gives the same
+  message and focuses Password.
+- [ ] Password characters are masked. Submitting both fields displays
+  `Sign-in is coming soon.` and clears the password.
+- [ ] Create Account displays `Account creation is coming soon.`
+- [ ] Continue as Guest displays `Guest access is coming soon.`
 - [ ] Closing the window returns to the terminal with `BUILD SUCCESS`.
 - [ ] No FXML loading errors or CSS warnings appear in the terminal.
 
@@ -164,21 +175,20 @@ beginning with `/tindatrack/`. Maven copies these resources into `target/classes
 during the build, so loading does not depend on a hardcoded source-file path.
 Missing resources produce a clear `IOException`.
 
-`FXMLLoader.load()` creates the layout described in `welcome.fxml`. The resulting
+`FXMLLoader.load()` creates the layout described in `login.fxml`. The resulting
 root node goes into a `Scene`, which holds the window's content. The CSS file is
 attached to the scene. The `Stage` is the desktop window: `setTitle` names it,
 `setScene` supplies its content, and `show` makes it visible.
 
-The FXML's `fx:controller="tindatrack.core.WelcomeController"` tells the loader
-which controller to create. Its label has `fx:id="welcomeMessage"`, matching the
-controller's `@FXML private Label welcomeMessage` field. The loader injects the
-label into that field, then calls the controller's `@FXML initialize()` method.
-That method sets the welcome text. This demonstrates how Java code communicates
-with FXML controls. The controller belongs to the existing shared `core` package;
-this welcome view does not implement a dashboard or other store features.
+`fx:controller="tindatrack.authentication.LoginController"` tells the loader
+which controller to create. The controls' `fx:id` attributes match the
+controller's `@FXML` fields. For example, `fx:id="passwordField"` gives the
+controller access to the PasswordField created by the loader.
 
-`welcome.css` styles the FXML nodes through their `styleClass` attributes. The
-layout stays in FXML, presentation stays in CSS, and initialization stays in Java.
+The Login button's `onAction="#handleLogin"` calls the controller's
+`handleLogin()` method. Login is the default button, so Enter can submit
+the form. The controller checks the fields and updates the feedback label.
+`login.css` styles the form and makes error messages red.
 
 `pom.xml` declares JavaFX controls and FXML dependencies, compiles for Java 21,
 and tells the JavaFX Maven plugin which class to launch. This is a simple
@@ -186,7 +196,7 @@ non-modular project, so no `module-info.java` is needed at this stage.
 
 ## Local credentials
 
-No credentials or database configuration are needed to run the welcome window. `.gitignore`
+The login screen runs without database credentials. `.gitignore`
 excludes build output, IDE workspace files, `.env` files, and the listed local
 database property files. Safe example files are allowed. Task 4 uses
 `config/database.properties` for credentials; it is already listed in
@@ -283,7 +293,7 @@ editing the file, rerun the test.
 - [ ] Only the ignored local file contains your real credentials.
 - [ ] `mvn compile exec:exec` prints the success message and `BUILD SUCCESS`.
 - [ ] A missing/incorrect local setting produces a clear failure message.
-- [ ] `mvn javafx:run` still opens the welcome window independently of MySQL.
+- [ ] `mvn javafx:run` opens the login screen independently of MySQL.
 
 The build and configuration-failure paths can be checked without credentials.
 A successful live connection must be verified using your own local account.
@@ -410,7 +420,7 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Task 4 commit
-message: `Add MySQL JDBC connection utility and manual connection test`.
+Git commands are managed manually by the project owner. Suggested Day 2, Task 1
+commit message is `Add JavaFX login interface and placeholder actions`.
 
-Stop after testing Task 4 and wait for approval before starting further work.
+Stop after testing Day 2, Task 1 and wait for approval before starting registration.

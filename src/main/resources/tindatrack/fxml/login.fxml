@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="tindatrack.authentication.LoginController"
+           styleClass="login-root">
+    <VBox alignment="CENTER" spacing="12" maxWidth="420" maxHeight="-Infinity"
+          styleClass="login-card">
+        <Label text="TindaTrack" styleClass="login-title" />
+        <Label text="Sign in to manage your store" styleClass="login-subtitle" />
+
+        <VBox spacing="5">
+            <Label text="Username" styleClass="field-label" />
+            <TextField fx:id="usernameField" accessibleText="Username"
+                       promptText="Enter your username" />
+        </VBox>
+
+        <VBox spacing="5">
+            <Label text="Password" styleClass="field-label" />
+            <PasswordField fx:id="passwordField" accessibleText="Password"
+                           promptText="Enter your password" />
+        </VBox>
+
+        <Button text="Login" maxWidth="Infinity" defaultButton="true"
+                onAction="#handleLogin" styleClass="login-button" />
+        <Button text="Continue as Guest (View Only)" maxWidth="Infinity"
+                onAction="#handleGuestAccess" styleClass="guest-button" />
+        <Hyperlink text="Create Account" onAction="#handleCreateAccount"
+                   styleClass="account-link" />
+
+        <Label fx:id="feedbackLabel" maxWidth="Infinity" minHeight="36"
+               alignment="CENTER" textAlignment="CENTER" wrapText="true"
+               styleClass="login-feedback" />
+    </VBox>
+</StackPane>
