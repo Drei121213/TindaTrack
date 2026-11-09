@@ -33,7 +33,8 @@
                 onAction="#handleLogin" styleClass="login-button" />
         <Button text="Continue as Guest (View Only)" maxWidth="Infinity"
                 onAction="#handleGuestAccess" styleClass="guest-button" />
-        <Hyperlink text="Create Account" onAction="#handleCreateAccount"
+        <Hyperlink fx:id="createAccountLink" text="Create Account" visible="false"
+                   onAction="#handleCreateAccount"
                    styleClass="account-link" />
 
         <Label fx:id="feedbackLabel" maxWidth="Infinity" minHeight="36"

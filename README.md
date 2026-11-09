@@ -3,18 +3,16 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 2, Task 1
+## Current scope: Day 2, Task 2
 
-The application opens the TindaTrack login screen from RTM storyboard SB01.
-The form has a username, a masked password, and actions for Login, Create
-Account, and Continue as Guest (View Only). Login checks for blank fields.
-Submitting both fields and choosing either alternate action shows a placeholder
-message.
+TindaTrack opens the login screen from storyboard SB01. When the MySQL
+`users` table is empty, **Create Account** opens the owner registration pop-up
+from SB12. Login and Continue as Guest still show placeholder messages.
 
 Day 1 includes the MySQL schema in `database/schema.sql`, a shared connection
-utility, and a manual command-line connection test. The login screen runs
-independently of MySQL. Account registration, credential verification, and guest
-sessions are scheduled for later Day 2 tasks.
+utility, and a manual command-line connection test. Registration uses that
+connection utility and the existing `users` table. Credential verification and
+guest sessions are scheduled for later Day 2 tasks.
 
 ## Requirements
 
@@ -45,7 +43,9 @@ TindaTrack/
     |   |   |-- TindaTrackApplication.java
     |   |   |-- authentication/
     |   |   |   |-- package-info.java
-    |   |   |   `-- LoginController.java
+    |   |   |   |-- LoginController.java
+    |   |   |   |-- RegistrationController.java
+    |   |   |   `-- UserDao.java
     |   |   |-- inventory/package-info.java
     |   |   |-- guest/package-info.java
     |   |   |-- credit/package-info.java
@@ -53,11 +53,13 @@ TindaTrack/
     |   |       |-- package-info.java
     |   |       |-- DatabaseConnection.java
     |   |       |-- DatabaseConnectionTest.java
+    |   |       |-- PasswordHasher.java
     |   |       `-- WelcomeController.java
     |   `-- resources/tindatrack/
     |       |-- fxml/
     |       |   |-- .gitkeep
     |       |   |-- login.fxml
+    |       |   |-- register.fxml
     |       |   `-- welcome.fxml
     |       `-- css/
     |           |-- .gitkeep
@@ -140,15 +142,14 @@ setup; the generated JAR is not a standalone application with bundled JavaFX.
 - [ ] `mvn compile` ends with `BUILD SUCCESS`.
 - [ ] `mvn verify` ends with `BUILD SUCCESS`.
 - [ ] `mvn javafx:run` opens a window titled `TindaTrack`.
-- [ ] The form shows Username, Password, Login, Continue as Guest (View Only),
-  and Create Account.
+- [ ] The form shows Username, Password, Login, and Continue as Guest (View Only).
 - [ ] Clicking Login with both fields empty displays `Please fill in all fields.`
   and focuses Username.
 - [ ] Entering a username and pressing Enter with Password blank gives the same
   message and focuses Password.
 - [ ] Password characters are masked. Submitting both fields displays
   `Sign-in is coming soon.` and clears the password.
-- [ ] Create Account displays `Account creation is coming soon.`
+- [ ] Create Account opens the registration pop-up when no owner exists.
 - [ ] Continue as Guest displays `Guest access is coming soon.`
 - [ ] Closing the window returns to the terminal with `BUILD SUCCESS`.
 - [ ] No FXML loading errors or CSS warnings appear in the terminal.
@@ -189,6 +190,53 @@ The Login button's `onAction="#handleLogin"` calls the controller's
 `handleLogin()` method. Login is the default button, so Enter can submit
 the form. The controller checks the fields and updates the feedback label.
 `login.css` styles the form and makes error messages red.
+
+## Owner registration
+
+`LoginController` checks for an existing owner on a background thread. It
+shows **Create Account** when the table is empty and **Retry account check**
+if MySQL cannot be reached. `register.fxml` defines the pop-up. Its
+`RegistrationController` checks the four fields, including the six-character
+password minimum from UC11 and the name and username lengths in the schema.
+
+A JavaFX `Task` hashes and saves valid input in the background.
+`PasswordHasher.hash()` uses PBKDF2-HMAC-SHA256 with 600,000 iterations and a
+fresh 16-byte random salt. The `password_hash` field stores the algorithm,
+iteration count, salt, and derived hash together. Password confirmation is used
+only for validation. [OWASP password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+
+`UserDao.createOwner()` checks for a duplicate username and an existing
+owner, then binds the full name, username, and encoded hash to an INSERT
+prepared statement. A MySQL named lock serializes registration across app
+windows connected to the same server. Closing the connection releases the lock.
+On success, the pop-up closes, Login shows the new username and the account
+creation message, and the Create Account link disappears.
+
+### Test registration
+
+1. Start MySQL and run `mvn compile exec:exec` from the project root to verify
+   your connection settings. Start the app with `mvn javafx:run`.
+2. With an empty `users` table, open **Create Account** and submit a blank form.
+   Expect a message under each field. Try a password shorter than six characters
+   and a mismatched confirmation to check both password messages.
+3. Click **Cancel** to return to Login. Reopen the pop-up, fill all four fields,
+   and submit. Use the name, username, and password you want for the store's
+   single owner account.
+4. Expect `Account created. You can now log in.` with the username filled in
+   and the Create Account link hidden. Restart the app to confirm the link stays
+   hidden when the owner already exists.
+5. In MySQL Workbench, verify the account and the hash format with a query that
+   returns only a prefix check and length:
+
+   ```sql
+   SELECT full_name, username,
+          password_hash LIKE 'pbkdf2-sha256$600000$%' AS has_expected_hash_format,
+          CHAR_LENGTH(password_hash) AS hash_length
+   FROM tindatrack.users;
+   ```
+
+   Expect one owner row with `has_expected_hash_format` equal to `1` and
+   `hash_length` equal to `90`. Actual login begins in Day 2, Task 3.
 
 `pom.xml` declares JavaFX controls and FXML dependencies, compiles for Java 21,
 and tells the JavaFX Maven plugin which class to launch. This is a simple
@@ -293,7 +341,7 @@ editing the file, rerun the test.
 - [ ] Only the ignored local file contains your real credentials.
 - [ ] `mvn compile exec:exec` prints the success message and `BUILD SUCCESS`.
 - [ ] A missing/incorrect local setting produces a clear failure message.
-- [ ] `mvn javafx:run` opens the login screen independently of MySQL.
+- [ ] `mvn javafx:run` opens the login screen and checks registration availability.
 
 The build and configuration-failure paths can be checked without credentials.
 A successful live connection must be verified using your own local account.
@@ -420,7 +468,7 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 2, Task 1
-commit message is `Add JavaFX login interface and placeholder actions`.
+Git commands are managed manually by the project owner. Suggested Day 2, Task 2
+commit message is `Implement owner registration with salted password hashing`.
 
-Stop after testing Day 2, Task 1 and wait for approval before starting registration.
+Stop after testing Day 2, Task 2 and wait for approval before starting login authentication.

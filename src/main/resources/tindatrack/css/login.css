@@ -76,3 +76,13 @@
     -fx-text-fill: #a12922;
     -fx-font-weight: bold;
 }
+
+.registration-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #203d2e;
+}
+
+.registration-error {
+    -fx-text-fill: #a12922;
+}
