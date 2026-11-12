@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 3, Task 1
+## Current scope: Day 3, Task 2
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -19,18 +19,28 @@ names, prices, stock counts, customer names, and balances from the existing sche
 ### Inventory interface
 
 1. Start MySQL, launch the app with `mvn javafx:run`, and sign in as the owner.
-2. Select **Inventory**. Confirm that the screen shows the five product columns
-   and the message “No products to display yet.”
-3. Try **Search**, **Add Product**, **Edit Product**, **Delete Product**, and
-   **Refresh**. Each displays a placeholder message for this task.
-4. Select **Back to Home**. Confirm that you return to the owner greeting and can
-   reopen Inventory or log out. Enter Guest Mode from login to check the separate
-   view-only route.
+2. Select **Inventory**, then **Add Product**. Try submitting blank fields,
+   a price of `0`, a price with three decimal places, or a fractional stock count.
+   Check the messages under the fields.
+3. Enter a name, a positive price with up to two decimal places, and a whole
+   stock quantity of zero or more. Select an optional expiration date from the
+   calendar. A past date prompts for confirmation. **No expiration date** clears
+   the date and disables the picker.
+4. Select **Save**. The dialog closes, the inventory reloads, and the saved
+   product appears. Try the same product name again and expect
+   “This product already exists.”
+5. Select **Back to Home** or log out and open Guest Mode to check the separate
+   read-only route.
 
-`inventory.fxml` declares the table, its column headers, and the button
-handlers. `InventoryController` manages the screen feedback and Back action.
-The table starts empty. Later tasks will supply product rows and connect
-the controls to MySQL.
+`ProductFormController` validates the form and starts a background task.
+`ProductDao.addProduct()` checks the owner session, checks the name using the
+database's collation, and binds the fields to a prepared INSERT. A MySQL named
+lock serializes name checks and inserts made by the app on the same server.
+`InventoryController` reloads the table after a save. Each `Product` record maps
+to one row, with `BigDecimal` for price and an optional `LocalDate` for expiration.
+
+The table starts empty on entry. Initial loading, Search, and manual Refresh
+are Task 3. Edit and Delete are Task 4.
 
 ## Requirements
 
@@ -68,7 +78,10 @@ TindaTrack/
     |   |   |   `-- UserDao.java
     |   |   |-- inventory/
     |   |   |   |-- package-info.java
-    |   |   |   `-- InventoryController.java
+    |   |   |   |-- InventoryController.java
+    |   |   |   |-- Product.java
+    |   |   |   |-- ProductDao.java
+    |   |   |   `-- ProductFormController.java
     |   |   |-- guest/
     |   |   |   |-- package-info.java
     |   |   |   |-- GuestController.java
@@ -90,6 +103,7 @@ TindaTrack/
     |       |   |-- inventory.fxml
     |       |   |-- login.fxml
     |       |   |-- owner-home.fxml
+    |       |   |-- product-form.fxml
     |       |   |-- register.fxml
     |       |   `-- welcome.fxml
     |       `-- css/
@@ -566,8 +580,8 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 3, Task 1
-commit message is `Add owner inventory interface`.
+Git commands are managed manually by the project owner. Suggested Day 3, Task 2
+commit message is `Add owner product registration`.
 
 ## Day 2 integration verification
 

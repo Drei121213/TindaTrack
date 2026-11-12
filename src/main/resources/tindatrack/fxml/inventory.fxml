@@ -23,7 +23,8 @@
     </HBox>
 
     <FlowPane hgap="8" vgap="8">
-        <Button text="Add Product" onAction="#handleAddProduct" styleClass="login-button" />
+        <Button fx:id="addProductButton" text="Add Product" onAction="#handleAddProduct"
+                styleClass="login-button" />
         <Button text="Edit Product" onAction="#handleEditProduct" styleClass="guest-button" />
         <Button text="Delete Product" onAction="#handleDeleteProduct" styleClass="guest-button" />
         <Button text="Refresh" onAction="#handleRefresh" styleClass="guest-button" />
@@ -32,11 +33,11 @@
     <TableView fx:id="productsTable" editable="false" VBox.vgrow="ALWAYS"
                styleClass="inventory-table">
         <columns>
-            <TableColumn text="Product ID" minWidth="70" prefWidth="85" />
-            <TableColumn text="Product Name" minWidth="100" prefWidth="180" />
-            <TableColumn text="Price (₱)" minWidth="64" prefWidth="88" />
-            <TableColumn text="Stock" minWidth="48" prefWidth="65" />
-            <TableColumn text="Expiration Date" minWidth="104" prefWidth="148" />
+            <TableColumn fx:id="productId" text="Product ID" minWidth="70" prefWidth="85" />
+            <TableColumn fx:id="productName" text="Product Name" minWidth="100" prefWidth="180" />
+            <TableColumn fx:id="productPrice" text="Price (₱)" minWidth="64" prefWidth="88" />
+            <TableColumn fx:id="productStock" text="Stock" minWidth="48" prefWidth="65" />
+            <TableColumn fx:id="productExpiration" text="Expiration Date" minWidth="104" prefWidth="148" />
         </columns>
         <placeholder>
             <Label text="No products to display yet." styleClass="inventory-status" />

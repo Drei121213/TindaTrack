@@ -17,6 +17,7 @@ import tindatrack.guest.GuestController;
 import tindatrack.guest.GuestService;
 import tindatrack.guest.GuestSession;
 import tindatrack.inventory.InventoryController;
+import tindatrack.inventory.ProductDao;
 
 /**
  * Entry point for the TindaTrack desktop application.
@@ -90,7 +91,7 @@ public class TindaTrackApplication extends Application {
         sessions.requireActive(owner);
         FXMLLoader loader = loadView("inventory.fxml");
         InventoryController controller = loader.getController();
-        controller.configure(() -> {
+        controller.configure(new ProductDao(sessions, owner), () -> {
             try {
                 sessions.requireActive(owner);
                 stage.getScene().setRoot(home);
