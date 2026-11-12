@@ -3,18 +3,34 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 2 complete
+## Current scope: Day 3, Task 1
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
 from SB12. A successful login opens a temporary owner home screen with a
-welcome message and Logout. **Continue as Guest (View Only)** opens product
+welcome message, Inventory, and Logout. **Continue as Guest (View Only)** opens product
 search and customer balances without an owner account.
 
 Day 1 includes the MySQL schema in `database/schema.sql`, a shared connection
 utility, and a manual command-line connection test. Registration and login use
 that connection utility and the existing `users` table. Guest Mode reads product
 names, prices, stock counts, customer names, and balances from the existing schema.
+
+### Inventory interface
+
+1. Start MySQL, launch the app with `mvn javafx:run`, and sign in as the owner.
+2. Select **Inventory**. Confirm that the screen shows the five product columns
+   and the message “No products to display yet.”
+3. Try **Search**, **Add Product**, **Edit Product**, **Delete Product**, and
+   **Refresh**. Each displays a placeholder message for this task.
+4. Select **Back to Home**. Confirm that you return to the owner greeting and can
+   reopen Inventory or log out. Enter Guest Mode from login to check the separate
+   view-only route.
+
+`inventory.fxml` declares the table, its column headers, and the button
+handlers. `InventoryController` manages the screen feedback and Back action.
+The table starts empty. Later tasks will supply product rows and connect
+the controls to MySQL.
 
 ## Requirements
 
@@ -50,7 +66,9 @@ TindaTrack/
     |   |   |   |-- OwnerSession.java
     |   |   |   |-- RegistrationController.java
     |   |   |   `-- UserDao.java
-    |   |   |-- inventory/package-info.java
+    |   |   |-- inventory/
+    |   |   |   |-- package-info.java
+    |   |   |   `-- InventoryController.java
     |   |   |-- guest/
     |   |   |   |-- package-info.java
     |   |   |   |-- GuestController.java
@@ -69,12 +87,14 @@ TindaTrack/
     |       |-- fxml/
     |       |   |-- .gitkeep
     |       |   |-- guest.fxml
+    |       |   |-- inventory.fxml
     |       |   |-- login.fxml
     |       |   |-- owner-home.fxml
     |       |   |-- register.fxml
     |       |   `-- welcome.fxml
     |       `-- css/
     |           |-- .gitkeep
+    |           |-- inventory.css
     |           |-- login.css
     |           `-- welcome.css
     `-- test/java/.gitkeep
@@ -546,8 +566,8 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 2, Task 5
-commit message is `Document Day 2 integration verification`.
+Git commands are managed manually by the project owner. Suggested Day 3, Task 1
+commit message is `Add owner inventory interface`.
 
 ## Day 2 integration verification
 

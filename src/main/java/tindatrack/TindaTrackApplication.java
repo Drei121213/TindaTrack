@@ -12,9 +12,11 @@ import tindatrack.authentication.LoginController;
 import tindatrack.authentication.OwnerSession;
 import tindatrack.core.OwnerHomeController;
 import tindatrack.core.SessionState;
+import tindatrack.core.SessionState.AccessDeniedException;
 import tindatrack.guest.GuestController;
 import tindatrack.guest.GuestService;
 import tindatrack.guest.GuestSession;
+import tindatrack.inventory.InventoryController;
 
 /**
  * Entry point for the TindaTrack desktop application.
@@ -69,9 +71,33 @@ public class TindaTrackApplication extends Application {
     private void showOwnerHome(Stage stage, OwnerSession owner) throws IOException {
         FXMLLoader loader = loadView("owner-home.fxml");
         OwnerHomeController controller = loader.getController();
+        Parent home = loader.getRoot();
 
         sessions.begin(owner);
-        controller.configure(owner.fullName(), () -> returnToLogin(stage));
+        controller.configure(owner.fullName(), () -> {
+            try {
+                showInventory(stage, owner, home);
+            } catch (IOException exception) {
+                controller.showNavigationError("Could not open Inventory. Please try again.");
+            } catch (AccessDeniedException exception) {
+                controller.showNavigationError(exception.getMessage());
+            }
+        }, () -> returnToLogin(stage));
+        stage.getScene().setRoot(home);
+    }
+
+    private void showInventory(Stage stage, OwnerSession owner, Parent home) throws IOException {
+        sessions.requireActive(owner);
+        FXMLLoader loader = loadView("inventory.fxml");
+        InventoryController controller = loader.getController();
+        controller.configure(() -> {
+            try {
+                sessions.requireActive(owner);
+                stage.getScene().setRoot(home);
+            } catch (AccessDeniedException exception) {
+                controller.showNavigationError(exception.getMessage());
+            }
+        });
         stage.getScene().setRoot(loader.getRoot());
     }
 

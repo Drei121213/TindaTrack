@@ -1,0 +1,20 @@
+.inventory-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #203d2e;
+}
+
+.inventory-table {
+    -fx-border-color: #d6e4db;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+}
+
+.inventory-table .column-header .label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #203d2e;
+}
+
+.inventory-status {
+    -fx-text-fill: #52675b;
+}
