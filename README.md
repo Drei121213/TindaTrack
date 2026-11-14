@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 3, Task 3
+## Current scope: Day 3, Task 4
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -56,8 +56,24 @@ to one row, with `BigDecimal` for price and an optional `LocalDate` for expirati
 `ProductDao` reads rows through a prepared SELECT in a background JavaFX
 `Task`. `InventoryController` replaces the contents of the table's
 `ObservableList` on the JavaFX thread. The `TableView` observes that list and
-uses each column's value factory to display fields from each `Product`. Edit
-and Delete are Task 4.
+uses each column's value factory to display fields from each `Product`.
+
+### Edit and delete products
+
+1. Select a product and choose **Edit Product**. Check that the current
+   values are filled in. Change the price, stock, or optional expiration date
+   and select **Save**. Inventory reloads with the same search applied.
+2. Select a product created for testing and choose **Delete Product**. Check
+   that the confirmation names that product. Select **Cancel** and confirm the
+   row is still present. Open the confirmation again and choose **Delete** to
+   remove the test product.
+
+The shared product form validates edits before saving. The DAO binds the
+product ID and original field values in its prepared UPDATE and DELETE
+statements. If the database row has changed or disappeared, refresh the list
+before retrying. A foreign-key restriction leaves the product and related
+records in place and displays a reason. The supplied schema stores credit
+items as text and has no foreign key to products.
 
 ## Requirements
 
@@ -597,8 +613,8 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 3, Task 3
-commit message is `Load and search owner inventory products`.
+Git commands are managed manually by the project owner. Suggested Day 3, Task 4
+commit message is `Add owner product editing and confirmed deletion`.
 
 ## Day 2 integration verification
 

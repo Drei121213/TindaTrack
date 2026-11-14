@@ -3,6 +3,8 @@ package tindatrack.inventory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
+import java.util.concurrent.Callable;
 
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -17,12 +19,13 @@ import javafx.scene.layout.VBox;
 import javafx.util.converter.LocalDateStringConverter;
 import tindatrack.core.SessionState.AccessDeniedException;
 
-/** Validates the Add Product form and saves through the owner product DAO. */
+/** Validates the add and edit forms and saves through the owner product DAO. */
 public final class ProductFormController {
 
     private static final BigDecimal MAX_PRICE = new BigDecimal("99999999.99");
 
     @FXML private VBox fields;
+    @FXML private Label formTitle;
     @FXML private TextField nameField;
     @FXML private TextField priceField;
     @FXML private TextField stockField;
@@ -37,6 +40,7 @@ public final class ProductFormController {
     @FXML private Button cancelButton;
 
     private ProductDao products;
+    private Product original;
     private boolean saved;
 
     @FXML
@@ -52,8 +56,18 @@ public final class ProductFormController {
         });
     }
 
-    void configure(ProductDao products) {
+    void configure(ProductDao products, Product original) {
         this.products = products;
+        this.original = original;
+        if (original != null) {
+            formTitle.setText("Edit Product");
+            nameField.setText(original.name());
+            nameField.setEditable(false);
+            priceField.setText(original.price().toPlainString());
+            stockField.setText(Integer.toString(original.stockQuantity()));
+            expirationField.setValue(original.expirationDate());
+            noExpiration.setSelected(original.expirationDate() == null);
+        }
     }
 
     @FXML
@@ -77,10 +91,23 @@ public final class ProductFormController {
         if (!nameMessage.isEmpty() || price == null || stock == null || !validDate) {
             return;
         }
-        if (expiry != null && expiry.isBefore(LocalDate.now()) && !confirmPastDate()) {
+        boolean expirationChanged = original == null || !Objects.equals(expiry, original.expirationDate());
+        if (original != null && price.compareTo(original.price()) == 0
+                && stock == original.stockQuantity() && !expirationChanged) {
+            showError(formError, "No changes to save.");
             return;
         }
-        save(name, price, stock, expiry);
+        if (expirationChanged && expiry != null && expiry.isBefore(LocalDate.now()) && !confirmPastDate()) {
+            return;
+        }
+        if (original == null) {
+            save(() -> products.addProduct(name, price, stock, expiry) == ProductDao.AddResult.ADDED,
+                    nameError, "This product already exists.", "Product was not saved. Please try again.");
+        } else {
+            save(() -> products.updateProduct(original, price, stock, expiry), formError,
+                    "This product changed or was removed. Cancel and refresh Inventory before editing again.",
+                    "Changes were not saved. Please try again.");
+        }
     }
 
     private BigDecimal readPrice() {
@@ -127,32 +154,35 @@ public final class ProductFormController {
         return confirmation.showAndWait().orElse(ButtonType.NO) == ButtonType.YES;
     }
 
-    private void save(String name, BigDecimal price, int stock, LocalDate expiry) {
+    private void save(Callable<Boolean> write, Label conflictLabel, String conflictMessage,
+                      String failureMessage) {
         setSaving(true);
-        Task<ProductDao.AddResult> task = new Task<>() {
+        Task<Boolean> task = new Task<>() {
             @Override
-            protected ProductDao.AddResult call() throws Exception {
-                return products.addProduct(name, price, stock, expiry);
+            protected Boolean call() throws Exception {
+                return write.call();
             }
         };
         task.setOnSucceeded(event -> {
             setSaving(false);
-            if (task.getValue() == ProductDao.AddResult.ADDED) {
+            if (task.getValue()) {
                 saved = true;
                 closeForm();
             } else {
-                showError(nameError, "This product already exists.");
-                nameField.requestFocus();
+                showError(conflictLabel, conflictMessage);
+                if (conflictLabel == nameError) {
+                    nameField.requestFocus();
+                }
             }
         });
         task.setOnFailed(event -> {
             setSaving(false);
             String message = task.getException() instanceof AccessDeniedException denied
-                    ? denied.getMessage() : "Product was not saved. Please try again.";
+                    ? denied.getMessage() : failureMessage;
             showError(formError, message);
         });
 
-        Thread worker = new Thread(task, "tindatrack-add-product");
+        Thread worker = new Thread(task, "tindatrack-save-product");
         worker.setDaemon(true);
         worker.start();
     }

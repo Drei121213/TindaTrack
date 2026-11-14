@@ -25,8 +25,10 @@
     <FlowPane hgap="8" vgap="8">
         <Button fx:id="addProductButton" text="Add Product" onAction="#handleAddProduct"
                 styleClass="login-button" />
-        <Button text="Edit Product" onAction="#handleEditProduct" styleClass="guest-button" />
-        <Button text="Delete Product" onAction="#handleDeleteProduct" styleClass="guest-button" />
+        <Button fx:id="editProductButton" text="Edit Product" onAction="#handleEditProduct"
+                styleClass="guest-button" />
+        <Button fx:id="deleteProductButton" text="Delete Product" onAction="#handleDeleteProduct"
+                styleClass="guest-button" />
         <Button fx:id="refreshButton" text="Refresh" onAction="#handleRefresh" styleClass="guest-button" />
     </FlowPane>
 

@@ -16,7 +16,7 @@
             fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER">
     <StackPane styleClass="login-root">
         <VBox spacing="14" maxWidth="420" maxHeight="-Infinity" styleClass="login-card">
-            <Label text="Add Product" styleClass="login-title" />
+            <Label fx:id="formTitle" text="Add Product" styleClass="login-title" />
             <VBox fx:id="fields" spacing="12">
                 <VBox spacing="5">
                     <Label text="Product Name *" styleClass="field-label" />

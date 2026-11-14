@@ -15,10 +15,11 @@ import tindatrack.authentication.OwnerSession;
 import tindatrack.core.DatabaseConnection;
 import tindatrack.core.SessionState;
 
-/** Reads and adds products for the active owner. */
+/** Reads and changes products for the active owner. */
 public final class ProductDao {
 
     public enum AddResult { ADDED, DUPLICATE_NAME }
+    public enum DeleteResult { DELETED, STALE, REFERENCED }
 
     private final SessionState sessions;
     private final OwnerSession owner;
@@ -50,14 +51,67 @@ public final class ProductDao {
                 insert.setString(1, name);
                 insert.setBigDecimal(2, price);
                 insert.setInt(3, stockQuantity);
-                if (expirationDate == null) {
-                    insert.setNull(4, Types.DATE);
-                } else {
-                    insert.setObject(4, expirationDate, Types.DATE);
-                }
+                bindDate(insert, 4, expirationDate);
                 insert.executeUpdate();
                 return AddResult.ADDED;
             }
+        }
+    }
+
+    public boolean updateProduct(Product original, BigDecimal price, int stockQuantity,
+                                 LocalDate expirationDate) throws IOException, SQLException {
+        sessions.requireActive(owner);
+        String sql = """
+                UPDATE products SET price = ?, stock_qty = ?, expiration_date = ?
+                WHERE product_id = ? AND name = ? AND price = ? AND stock_qty = ?
+                    AND expiration_date <=> ?
+                """;
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setBigDecimal(1, price);
+            statement.setInt(2, stockQuantity);
+            bindDate(statement, 3, expirationDate);
+            bindOriginal(statement, 4, original);
+            sessions.requireActive(owner);
+            return statement.executeUpdate() == 1;
+        }
+    }
+
+    public DeleteResult deleteProduct(Product original) throws IOException, SQLException {
+        sessions.requireActive(owner);
+        String sql = """
+                DELETE FROM products
+                WHERE product_id = ? AND name = ? AND price = ? AND stock_qty = ?
+                    AND expiration_date <=> ?
+                """;
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            bindOriginal(statement, 1, original);
+            sessions.requireActive(owner);
+            return statement.executeUpdate() == 1 ? DeleteResult.DELETED : DeleteResult.STALE;
+        } catch (SQLException exception) {
+            if (exception.getErrorCode() == 1451 || exception.getErrorCode() == 1217) {
+                return DeleteResult.REFERENCED;
+            }
+            throw exception;
+        }
+    }
+
+    private void bindOriginal(PreparedStatement statement, int start, Product original)
+            throws SQLException {
+        statement.setInt(start, original.id());
+        statement.setString(start + 1, original.name());
+        statement.setBigDecimal(start + 2, original.price());
+        statement.setInt(start + 3, original.stockQuantity());
+        bindDate(statement, start + 4, original.expirationDate());
+    }
+
+    private void bindDate(PreparedStatement statement, int parameter, LocalDate date)
+            throws SQLException {
+        if (date == null) {
+            statement.setNull(parameter, Types.DATE);
+        } else {
+            statement.setObject(parameter, date, Types.DATE);
         }
     }
 
