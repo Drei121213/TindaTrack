@@ -16,10 +16,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import tindatrack.core.SessionState.AccessDeniedException;
 
-/** Opens the product form and displays products after a save. */
+/** Displays stored products and opens the Add Product form. */
 public final class InventoryController {
 
     @FXML private TableView<Product> productsTable;
@@ -29,10 +31,14 @@ public final class InventoryController {
     @FXML private TableColumn<Product, Number> productStock;
     @FXML private TableColumn<Product, LocalDate> productExpiration;
     @FXML private Button addProductButton;
+    @FXML private Button searchButton;
+    @FXML private Button refreshButton;
+    @FXML private TextField searchField;
     @FXML private Label statusLabel;
 
     private ProductDao products;
     private Runnable onBack;
+    private String submittedSearch = "";
 
     @FXML
     private void initialize() {
@@ -48,6 +54,7 @@ public final class InventoryController {
     public void configure(ProductDao products, Runnable onBack) {
         this.products = products;
         this.onBack = onBack;
+        loadProducts(false);
     }
 
     public void showNavigationError(String message) {
@@ -56,7 +63,8 @@ public final class InventoryController {
 
     @FXML
     private void handleSearch() {
-        statusLabel.setText("Product search is coming soon.");
+        submittedSearch = searchField.getText().strip();
+        loadProducts(false);
     }
 
     @FXML
@@ -82,36 +90,61 @@ public final class InventoryController {
             });
             dialog.showAndWait();
             if (form.wasSaved()) {
-                refreshAfterSave();
+                searchField.clear();
+                submittedSearch = "";
+                loadProducts(true);
             }
         } catch (IOException exception) {
             statusLabel.setText("Could not open Add Product. Please try again.");
         }
     }
 
-    private void refreshAfterSave() {
-        statusLabel.setText("Product saved. Refreshing inventory...");
-        addProductButton.setDisable(true);
+    private void loadProducts(boolean afterSave) {
+        String search = submittedSearch;
+        statusLabel.setText(afterSave ? "Product saved. Refreshing inventory..." : "Loading products...");
+        productsTable.setPlaceholder(new Label("Loading products..."));
+        setLoading(true);
 
         Task<List<Product>> task = new Task<>() {
             @Override
             protected List<Product> call() throws Exception {
-                return products.findAll();
+                return search.isEmpty() ? products.findAll() : products.findByName(search);
             }
         };
         task.setOnSucceeded(event -> {
             productsTable.getItems().setAll(task.getValue());
-            statusLabel.setText("Product saved.");
-            addProductButton.setDisable(false);
+            String emptyMessage = search.isEmpty() ? "No products to display yet." : "No products found.";
+            productsTable.setPlaceholder(new Label(emptyMessage));
+            statusLabel.setText(afterSave ? "Product saved." : "");
+            setLoading(false);
         });
         task.setOnFailed(event -> {
-            statusLabel.setText("Product saved. Could not refresh the inventory.");
-            addProductButton.setDisable(false);
+            if (task.getException() instanceof AccessDeniedException denied) {
+                productsTable.getItems().clear();
+                statusLabel.setText(denied.getMessage());
+            } else {
+                String message = afterSave ? "Product saved. Could not refresh the inventory."
+                        : search.isEmpty() ? "Could not load products. Please try again."
+                        : "Search failed. Please try again.";
+                if (!productsTable.getItems().isEmpty()) {
+                    message += " Showing previous results.";
+                }
+                statusLabel.setText(message);
+            }
+            productsTable.setPlaceholder(new Label("Use Refresh to try again."));
+            setLoading(false);
         });
 
         Thread worker = new Thread(task, "tindatrack-reload-products");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    private void setLoading(boolean loading) {
+        searchField.setDisable(loading);
+        searchButton.setDisable(loading);
+        refreshButton.setDisable(loading);
+        addProductButton.setDisable(loading);
     }
 
     @FXML
@@ -126,7 +159,7 @@ public final class InventoryController {
 
     @FXML
     private void handleRefresh() {
-        statusLabel.setText("Refreshing products is coming soon.");
+        loadProducts(false);
     }
 
     @FXML

@@ -17,9 +17,9 @@
     <Label text="Inventory Management" styleClass="inventory-title" />
 
     <HBox alignment="CENTER_LEFT" spacing="8">
-        <TextField promptText="Search by product name" accessibleText="Product name"
+        <TextField fx:id="searchField" promptText="Search by product name" accessibleText="Product name"
                    onAction="#handleSearch" HBox.hgrow="ALWAYS" />
-        <Button text="Search" onAction="#handleSearch" styleClass="login-button" />
+        <Button fx:id="searchButton" text="Search" onAction="#handleSearch" styleClass="login-button" />
     </HBox>
 
     <FlowPane hgap="8" vgap="8">
@@ -27,7 +27,7 @@
                 styleClass="login-button" />
         <Button text="Edit Product" onAction="#handleEditProduct" styleClass="guest-button" />
         <Button text="Delete Product" onAction="#handleDeleteProduct" styleClass="guest-button" />
-        <Button text="Refresh" onAction="#handleRefresh" styleClass="guest-button" />
+        <Button fx:id="refreshButton" text="Refresh" onAction="#handleRefresh" styleClass="guest-button" />
     </FlowPane>
 
     <TableView fx:id="productsTable" editable="false" VBox.vgrow="ALWAYS"

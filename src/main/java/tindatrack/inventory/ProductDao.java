@@ -62,17 +62,27 @@ public final class ProductDao {
     }
 
     public List<Product> findAll() throws IOException, SQLException {
+        return findByName("");
+    }
+
+    public List<Product> findByName(String name) throws IOException, SQLException {
         sessions.requireActive(owner);
-        String sql = "SELECT product_id, name, price, stock_qty, expiration_date "
-                + "FROM products ORDER BY name, product_id";
+        String sql = """
+                SELECT product_id, name, price, stock_qty, expiration_date
+                FROM products
+                WHERE LOCATE(?, name) > 0
+                ORDER BY name, product_id
+                """;
         List<Product> products = new ArrayList<>();
         try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql);
-             ResultSet rows = statement.executeQuery()) {
-            while (rows.next()) {
-                products.add(new Product(rows.getInt("product_id"), rows.getString("name"),
-                        rows.getBigDecimal("price"), rows.getInt("stock_qty"),
-                        rows.getObject("expiration_date", LocalDate.class)));
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, name.strip());
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    products.add(new Product(rows.getInt("product_id"), rows.getString("name"),
+                            rows.getBigDecimal("price"), rows.getInt("stock_qty"),
+                            rows.getObject("expiration_date", LocalDate.class)));
+                }
             }
         }
         return products;

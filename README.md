@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 3, Task 2
+## Current scope: Day 3, Task 3
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -39,8 +39,25 @@ lock serializes name checks and inserts made by the app on the same server.
 `InventoryController` reloads the table after a save. Each `Product` record maps
 to one row, with `BigDecimal` for price and an optional `LocalDate` for expiration.
 
-The table starts empty on entry. Initial loading, Search, and manual Refresh
-are Task 3. Edit and Delete are Task 4.
+### View and search products
+
+1. Open **Inventory** as the owner and confirm that previously saved products
+   appear, including stock and any expiration date.
+2. Enter part of a product name and press Enter or select **Search**. Try
+   changing the case and confirm that the same names match. A search with no
+   matches shows “No products found.”
+3. Select **Refresh** to rerun the last submitted search. Clear the field and
+   submit to see all products. Saving a product also clears the search so the
+   new row appears in the full list.
+4. If a query fails, check the status message and select **Refresh** after the
+   connection recovers. Any rows still shown are from the previous successful
+   load.
+
+`ProductDao` reads rows through a prepared SELECT in a background JavaFX
+`Task`. `InventoryController` replaces the contents of the table's
+`ObservableList` on the JavaFX thread. The `TableView` observes that list and
+uses each column's value factory to display fields from each `Product`. Edit
+and Delete are Task 4.
 
 ## Requirements
 
@@ -580,8 +597,8 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 3, Task 2
-commit message is `Add owner product registration`.
+Git commands are managed manually by the project owner. Suggested Day 3, Task 3
+commit message is `Load and search owner inventory products`.
 
 ## Day 2 integration verification
 
