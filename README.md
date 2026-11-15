@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 3, Task 4
+## Current scope: Day 3 complete
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -613,8 +613,35 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 3, Task 4
-commit message is `Add owner product editing and confirmed deletion`.
+Git commands are managed manually by the project owner. Suggested Day 3, Task 5
+commit message is `Document Day 3 inventory integration verification`.
+
+## Day 3 integration verification
+
+With Java 21 selected and MySQL running, run these commands from the project root.
+
+```powershell
+mvn verify
+mvn compile exec:exec
+mvn javafx:run
+```
+
+1. Sign in as the owner and select **Inventory**. Add a product for testing
+   after checking that a negative price and fractional stock are rejected.
+2. Close and reopen the app. Sign in and confirm the product is still listed.
+   Search for part of its name using a different case, then edit its price or
+   stock and check the updated row.
+3. Choose **Delete Product**, verify the name in the confirmation, and select
+   **Cancel**. Confirm the test product remains. Repeat and confirm deletion.
+4. Return home, log out, and enter Guest Mode. Check the product and credit
+   views, then select **Exit Guest Mode** to return to login.
+
+Task 5 exercised these flows against a disposable MySQL instance over two
+separate app launches. It also checked first-owner registration, invalid
+credentials, the Day 1 schema and connection check, and inventory refresh
+recovery after a refused connection. The guest session could not add, edit,
+or delete through the DAO. A test-only foreign key blocked deletion of a
+referenced product and preserved its dependent record.
 
 ## Day 2 integration verification
 
