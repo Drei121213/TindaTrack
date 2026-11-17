@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 4, Task 2
+## Current scope: Day 4, Task 3
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -613,8 +613,8 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 3, Task 5
-commit message is `Document Day 3 inventory integration verification`.
+Git commands are managed manually by the project owner. Suggested Day 4, Task 3
+commit message is `Filter expiring products and highlight expired rows`.
 
 ## Day 3 integration verification
 
@@ -667,20 +667,24 @@ the date is absent. The DAO reads the value back as a nullable `LocalDate`.
 ## Expiring Soon
 
 The Expiring Soon view shows the product name, stock, expiration date, and
-days left. The default list includes expired products and products due from
-today through seven days from today, inclusive. Rows are ordered by earliest
-expiration date, and products with no expiration date are excluded.
+days left. Select 7, 14, or 30 days to reload the list. The default is 7 days.
+The list includes expired products and products due from today through the
+selected cutoff, inclusive. Rows are ordered by earliest expiration date.
+Products with no expiration date are excluded.
 
 `ExpiringSoonController` captures the local date when loading the view and
 passes the cutoff to `ProductDao.findExpiringThrough()` on a JavaFX background
 task. The query binds the cutoff as a SQL `DATE`. The controller uses
 `ChronoUnit.DAYS.between()` with the same local date to label expired,
-due-today, and upcoming products. A failed query displays a **Retry** button.
+due-today, and upcoming products. Expired rows are highlighted in red and
+carry the **Expired** label. A failed query displays a **Retry** button.
 
-The screen is available for standalone testing. Range selection is scheduled
-for Task 3 and the owner navigation link for Task 4. Once the link is available,
-check that past dates, today, and day seven appear in order, that day eight and
-blank dates are absent, and that empty and failed loads display distinct messages.
+The owner navigation link is scheduled for Task 4. Once it is available,
+check that 7 days is selected when opening the screen. Switch to 30 days and
+look for existing products with dates 8 to 30 days from today. Check that
+expired rows stay red in both ranges, that today's rows say **Expires Today**,
+and that blank dates are excluded. If the selected range has no matching
+products and there are no expired products, expect “No products expiring soon.”
 
 ## Day 2 integration verification
 

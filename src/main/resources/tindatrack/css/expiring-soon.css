@@ -5,3 +5,15 @@
 .expiration-table .placeholder .label {
     -fx-padding: 12px;
 }
+
+.expiration-table .table-row-cell:expired {
+    -fx-background-color: #fde9e7;
+}
+
+.expiration-table .table-row-cell:expired:selected {
+    -fx-background-color: #f6c8c4;
+}
+
+.expiration-table .table-row-cell:expired .table-cell {
+    -fx-text-fill: #8b241d;
+}
