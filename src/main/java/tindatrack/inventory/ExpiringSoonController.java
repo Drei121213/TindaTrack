@@ -1,7 +1,6 @@
 package tindatrack.inventory;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import javafx.beans.property.ReadOnlyIntegerWrapper;
@@ -65,7 +64,7 @@ public final class ExpiringSoonController {
         stock.setCellValueFactory(cell -> new ReadOnlyIntegerWrapper(cell.getValue().stockQuantity()));
         expirationDate.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().expirationDate()));
         daysLeft.setCellValueFactory(cell -> new ReadOnlyStringWrapper(
-                describeDaysLeft(ChronoUnit.DAYS.between(referenceDate, cell.getValue().expirationDate()))));
+                ExpirationDates.status(cell.getValue().expirationDate(), referenceDate)));
     }
 
     public void configure(ProductDao products, Runnable onBack, Runnable onInventory) {
@@ -140,13 +139,4 @@ public final class ExpiringSoonController {
         worker.start();
     }
 
-    private String describeDaysLeft(long days) {
-        if (days < 0) {
-            return "Expired";
-        }
-        if (days == 0) {
-            return "Expires Today";
-        }
-        return days == 1 ? "1 Day Left" : days + " Days Left";
-    }
 }

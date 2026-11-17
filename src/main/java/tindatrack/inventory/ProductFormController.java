@@ -2,7 +2,6 @@ package tindatrack.inventory;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -13,11 +12,14 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 import tindatrack.core.SessionState.AccessDeniedException;
@@ -62,7 +64,7 @@ public final class ProductFormController {
             @Override
             public LocalDate fromString(String text) {
                 try {
-                    LocalDate date = parseExpiration(text);
+                    LocalDate date = ExpirationDates.parseOptional(text);
                     rejectedDateText = null;
                     return date;
                 } catch (DateTimeParseException exception) {
@@ -78,10 +80,25 @@ public final class ProductFormController {
             expirationField.getEditor().setText(expirationField.getConverter().toString(date));
             showError(dateError, "");
         });
+        expirationField.setDayCellFactory(picker -> {
+            DateCell day = new DateCell();
+            // Reselecting an equal date does not fire the picker's value listener.
+            day.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
+                if (event.getButton() == MouseButton.PRIMARY) {
+                    restoreSelectedDay(day);
+                }
+            });
+            day.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+                if (event.getCode() == KeyCode.ENTER || event.getCode() == KeyCode.SPACE) {
+                    restoreSelectedDay(day);
+                }
+            });
+            return day;
+        });
         expirationField.addEventFilter(KeyEvent.ANY, event -> {
             if (event.getCode() == KeyCode.ENTER && !expirationField.isShowing()) {
                 try {
-                    parseExpiration(expirationField.getEditor().getText());
+                    ExpirationDates.parseOptional(expirationField.getEditor().getText());
                 } catch (DateTimeParseException exception) {
                     showError(dateError, "Please enter a valid date.");
                     event.consume();
@@ -97,6 +114,15 @@ public final class ProductFormController {
                 showError(dateError, "");
             }
         });
+    }
+
+    private void restoreSelectedDay(DateCell day) {
+        LocalDate date = day.getItem();
+        if (!day.isDisabled() && date != null && date.equals(expirationField.getValue())) {
+            rejectedDateText = null;
+            expirationField.getEditor().setText(date.toString());
+            showError(dateError, "");
+        }
     }
 
     void configure(ProductDao products, Product original) {
@@ -130,7 +156,8 @@ public final class ProductFormController {
         Integer stock = readStock();
         LocalDate expiry;
         try {
-            expiry = noExpiration.isSelected() ? null : parseExpiration(expirationField.getEditor().getText());
+            expiry = noExpiration.isSelected() ? null
+                    : ExpirationDates.parseOptional(expirationField.getEditor().getText());
             showError(dateError, "");
         } catch (DateTimeParseException exception) {
             showError(dateError, "Please enter a valid date.");
@@ -146,7 +173,8 @@ public final class ProductFormController {
             showError(formError, "No changes to save.");
             return;
         }
-        if (expirationChanged && expiry != null && expiry.isBefore(LocalDate.now()) && !confirmPastDate()) {
+        LocalDate previous = original == null ? null : original.expirationDate();
+        if (ExpirationDates.requiresConfirmation(previous, expiry, LocalDate.now()) && !confirmPastDate()) {
             return;
         }
         if (original == null) {
@@ -157,17 +185,6 @@ public final class ProductFormController {
                     "This product changed or was removed. Cancel and refresh Inventory before editing again.",
                     "Changes were not saved. Please try again.");
         }
-    }
-
-    private static LocalDate parseExpiration(String text) {
-        String value = text.strip();
-        if (value.isEmpty()) {
-            return null;
-        }
-        if (!value.matches("[1-9][0-9]{3}-[0-9]{2}-[0-9]{2}")) {
-            throw new DateTimeParseException("Expected YYYY-MM-DD", value, 0);
-        }
-        return LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
     }
 
     private BigDecimal readPrice() {

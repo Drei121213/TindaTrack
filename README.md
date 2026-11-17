@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 4, Task 4
+## Current scope: Day 4 complete
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -111,6 +111,8 @@ TindaTrack/
     |   |   |   `-- UserDao.java
     |   |   |-- inventory/
     |   |   |   |-- package-info.java
+    |   |   |   |-- ExpirationDates.java
+    |   |   |   |-- ExpiringSoonController.java
     |   |   |   |-- InventoryController.java
     |   |   |   |-- Product.java
     |   |   |   |-- ProductDao.java
@@ -132,6 +134,7 @@ TindaTrack/
     |   `-- resources/tindatrack/
     |       |-- fxml/
     |       |   |-- .gitkeep
+    |       |   |-- expiring-soon.fxml
     |       |   |-- guest.fxml
     |       |   |-- inventory.fxml
     |       |   |-- login.fxml
@@ -141,10 +144,11 @@ TindaTrack/
     |       |   `-- welcome.fxml
     |       `-- css/
     |           |-- .gitkeep
+    |           |-- expiring-soon.css
     |           |-- inventory.css
     |           |-- login.css
     |           `-- welcome.css
-    `-- test/java/.gitkeep
+    `-- test/java/tindatrack/inventory/ExpirationDatesTest.java
 ```
 
 The packages follow the conceptual packages in RTM Part D. Java identifiers use
@@ -160,7 +164,7 @@ lowercase names without spaces:
 
 Each `package-info.java` documents a package without implementing features.
 The empty `.gitkeep` files preserve directories for future work. They contain
-no application logic. `src/test/java` is reserved for future automated tests.
+no application logic. `src/test/java` contains the JUnit expiration tests.
 
 `.mvn/maven.config` keeps Maven's dependency cache in this project's ignored
 `.m2/repository` directory. This keeps dependency downloads inside the project
@@ -204,9 +208,8 @@ mvn javafx:run
 ```
 
 - `mvn compile` compiles the Java source into `target/classes`.
-- `mvn verify` runs the Maven build lifecycle through verification and produces
-  `target/tindatrack-1.0-SNAPSHOT.jar`. There are no automated tests yet; Maven
-  reporting `No tests to run` is expected.
+- `mvn verify` compiles the app, runs the JUnit tests, and produces
+  `target/tindatrack-1.0-SNAPSHOT.jar`.
 - `mvn javafx:run` starts the configured JavaFX entry point and opens the login
   window. Maven stays running while the window is open. Close the window to
   finish the run and see `BUILD SUCCESS` in the terminal.
@@ -613,8 +616,8 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 4, Task 4
-commit message is `Connect Expiring Soon to owner navigation`.
+Git commands are managed manually by the project owner. Suggested Day 4, Task 5
+commit message is `Test expiration management and fix calendar reselection`.
 
 ## Day 3 integration verification
 
@@ -698,6 +701,30 @@ blank dates are excluded. If there are no matching products, the table shows
 `TindaTrackApplication` checks the active owner session before switching views.
 Both inventory screens share the owner's `ProductDao`. Date updates still use
 the existing Inventory form and prepared update.
+
+## Day 4 acceptance checks
+
+Run `mvn test` for the 15 JUnit checks. They cover optional dates, invalid
+formats and calendar dates, past-date confirmation rules, and status labels.
+Run `mvn verify` to test and package together. Start MySQL and run
+`mvn javafx:run` for the manual checks above.
+
+The B4 acceptance flows ran through JavaFX against disposable MySQL databases.
+Date fixtures were chosen relative to the test date where the behavior depends
+on today's date. The database-error check used a refused connection in the test
+configuration.
+
+| B4 cases | Verified behavior |
+| --- | --- |
+| `SetExpiration_SunnyDay`, `SetExpiration_NoExpiration` | A selected date saved and appeared in Inventory. Clearing the date disabled the picker and persisted SQL NULL. |
+| `SetExpiration_InvalidDate` | Invalid typed dates kept the form open with an error. Reselecting the same calendar date now replaces invalid text. |
+| `SetExpiration_PastDateYes`, `SetExpiration_PastDateNo` | Yes saved the past date. No kept the form open and preserved the saved date. |
+| `ViewExpiring_SunnyDay`, `ViewExpiring_ChangeRange` | The default list included day seven. The 30-day list added day 20 and day 30 and excluded day 31. Dates appeared in ascending order. |
+| `ViewExpiring_ExpiredHighlighted`, `ViewExpiring_NoExpiryNotListed` | The expired row rendered in red, today's row said Expires Today, and the undated product was excluded. |
+| `ViewExpiring_NoProducts`, `ViewExpiring_DatabaseError` | An empty list showed its message. A refused connection showed an error and Retry restored the current range. |
+
+The regression checks also exercised owner registration and login, product add,
+search, edit and confirmed delete, and the limits on guest navigation and writes.
 
 ## Day 2 integration verification
 
