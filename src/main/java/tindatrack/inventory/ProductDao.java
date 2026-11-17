@@ -127,16 +127,36 @@ public final class ProductDao {
                 WHERE LOCATE(?, name) > 0
                 ORDER BY name, product_id
                 """;
-        List<Product> products = new ArrayList<>();
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, name.strip());
-            try (ResultSet rows = statement.executeQuery()) {
-                while (rows.next()) {
-                    products.add(new Product(rows.getInt("product_id"), rows.getString("name"),
-                            rows.getBigDecimal("price"), rows.getInt("stock_qty"),
-                            rows.getObject("expiration_date", LocalDate.class)));
-                }
+            return readProducts(statement);
+        }
+    }
+
+    /** Finds expired products and products due on or before the cutoff. */
+    public List<Product> findExpiringThrough(LocalDate cutoff) throws IOException, SQLException {
+        sessions.requireActive(owner);
+        String sql = """
+                SELECT product_id, name, price, stock_qty, expiration_date
+                FROM products
+                WHERE expiration_date IS NOT NULL AND expiration_date <= ?
+                ORDER BY expiration_date, name, product_id
+                """;
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, cutoff, Types.DATE);
+            return readProducts(statement);
+        }
+    }
+
+    private List<Product> readProducts(PreparedStatement statement) throws SQLException {
+        List<Product> products = new ArrayList<>();
+        try (ResultSet rows = statement.executeQuery()) {
+            while (rows.next()) {
+                products.add(new Product(rows.getInt("product_id"), rows.getString("name"),
+                        rows.getBigDecimal("price"), rows.getInt("stock_qty"),
+                        rows.getObject("expiration_date", LocalDate.class)));
             }
         }
         return products;

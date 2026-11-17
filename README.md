@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 4, Task 1
+## Current scope: Day 4, Task 2
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -663,6 +663,24 @@ Try these checks in the owner Inventory with products created for testing.
 The controller validates calendar and typed dates before saving. JDBC binds a
 `LocalDate` as SQL `DATE` with `setObject`, or uses `setNull` when
 the date is absent. The DAO reads the value back as a nullable `LocalDate`.
+
+## Expiring Soon
+
+The Expiring Soon view shows the product name, stock, expiration date, and
+days left. The default list includes expired products and products due from
+today through seven days from today, inclusive. Rows are ordered by earliest
+expiration date, and products with no expiration date are excluded.
+
+`ExpiringSoonController` captures the local date when loading the view and
+passes the cutoff to `ProductDao.findExpiringThrough()` on a JavaFX background
+task. The query binds the cutoff as a SQL `DATE`. The controller uses
+`ChronoUnit.DAYS.between()` with the same local date to label expired,
+due-today, and upcoming products. A failed query displays a **Retry** button.
+
+The screen is available for standalone testing. Range selection is scheduled
+for Task 3 and the owner navigation link for Task 4. Once the link is available,
+check that past dates, today, and day seven appear in order, that day eight and
+blank dates are absent, and that empty and failed loads display distinct messages.
 
 ## Day 2 integration verification
 

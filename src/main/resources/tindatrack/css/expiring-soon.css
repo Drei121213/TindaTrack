@@ -1,0 +1,7 @@
+.expiration-table .expiration-stock.table-cell {
+    -fx-alignment: center-right;
+}
+
+.expiration-table .placeholder .label {
+    -fx-padding: 12px;
+}

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="tindatrack.inventory.ExpiringSoonController"
+      styleClass="login-root" stylesheets="@../css/inventory.css,@../css/expiring-soon.css"
+      spacing="12">
+    <Label text="Expiring Soon" styleClass="inventory-title" />
+    <Label fx:id="rangeLabel" wrapText="true" styleClass="inventory-status" />
+
+    <TableView fx:id="expiringTable" editable="false" VBox.vgrow="ALWAYS"
+               styleClass="inventory-table,expiration-table">
+        <columns>
+            <TableColumn fx:id="productName" text="Product Name" minWidth="108"
+                         prefWidth="210" sortable="false" />
+            <TableColumn fx:id="stock" text="Stock" minWidth="54" prefWidth="72"
+                         styleClass="expiration-stock" sortable="false" />
+            <TableColumn fx:id="expirationDate" text="Expiration Date" minWidth="107"
+                         prefWidth="144" sortable="false" />
+            <TableColumn fx:id="daysLeft" text="Days Left" minWidth="105" prefWidth="120"
+                         sortable="false" />
+        </columns>
+        <placeholder>
+            <Label fx:id="listMessage" text="Loading products..." wrapText="true"
+                   styleClass="inventory-status" />
+        </placeholder>
+    </TableView>
+
+    <Button fx:id="retryButton" text="Retry" onAction="#loadProducts"
+            visible="false" managed="false" styleClass="guest-button" />
+</VBox>
