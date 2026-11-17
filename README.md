@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 3 complete
+## Current scope: Day 4, Task 1
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -23,9 +23,9 @@ names, prices, stock counts, customer names, and balances from the existing sche
    a price of `0`, a price with three decimal places, or a fractional stock count.
    Check the messages under the fields.
 3. Enter a name, a positive price with up to two decimal places, and a whole
-   stock quantity of zero or more. Select an optional expiration date from the
-   calendar. A past date prompts for confirmation. **No expiration date** clears
-   the date and disables the picker.
+   stock quantity of zero or more. Type an optional expiration date as
+   `YYYY-MM-DD` or select it from the calendar. **No expiration date** clears
+   and disables the picker.
 4. Select **Save**. The dialog closes, the inventory reloads, and the saved
    product appears. Try the same product name again and expect
    “This product already exists.”
@@ -642,6 +642,27 @@ credentials, the Day 1 schema and connection check, and inventory refresh
 recovery after a refused connection. The guest session could not add, edit,
 or delete through the DAO. A test-only foreign key blocked deletion of a
 referenced product and preserved its dependent record.
+
+## Expiration date input
+
+Try these checks in the owner Inventory with products created for testing.
+
+1. **SetExpiration_SunnyDay**. Use the calendar to select a future date in
+   **Add Product** and save. Check the Expiration Date column. Use **Edit
+   Product** to change the date and confirm the updated value appears.
+2. **SetExpiration_NoExpiration**. Select **No expiration date**. The picker
+   clears and becomes disabled. Save and check the blank date cell. Leaving
+   the date field blank also saves an absent date.
+3. **SetExpiration_InvalidDate**. Type `2026-13-45` and select **Save**.
+   Expect “Please enter a valid date.” and an open form with the text intact.
+4. **SetExpiration_PastDateYes**. Enter a date earlier than today and select
+   **Yes** when prompted. Check that Inventory displays the past date.
+5. **SetExpiration_PastDateNo**. Enter a new past date and select **No**.
+   The form stays open and the stored product keeps its original date.
+
+The controller validates calendar and typed dates before saving. JDBC binds a
+`LocalDate` as SQL `DATE` with `setObject`, or uses `setNull` when
+the date is absent. The DAO reads the value back as a nullable `LocalDate`.
 
 ## Day 2 integration verification
 

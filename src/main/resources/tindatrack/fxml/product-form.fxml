@@ -40,7 +40,7 @@
                 <VBox spacing="5">
                     <Label text="Expiration Date" styleClass="field-label" />
                     <DatePicker fx:id="expirationField" accessibleText="Expiration Date"
-                                promptText="YYYY-MM-DD" editable="false" maxWidth="Infinity" />
+                                promptText="YYYY-MM-DD" editable="true" maxWidth="Infinity" />
                     <CheckBox fx:id="noExpiration" text="No expiration date" />
                     <Label fx:id="dateError" visible="false" managed="false"
                            wrapText="true" styleClass="registration-error" />

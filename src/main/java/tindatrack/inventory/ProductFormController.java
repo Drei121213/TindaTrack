@@ -3,6 +3,7 @@ package tindatrack.inventory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 
@@ -15,8 +16,10 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.VBox;
-import javafx.util.converter.LocalDateStringConverter;
+import javafx.util.StringConverter;
 import tindatrack.core.SessionState.AccessDeniedException;
 
 /** Validates the add and edit forms and saves through the owner product DAO. */
@@ -42,15 +45,55 @@ public final class ProductFormController {
     private ProductDao products;
     private Product original;
     private boolean saved;
+    private String rejectedDateText;
 
     @FXML
     private void initialize() {
-        DateTimeFormatter format = DateTimeFormatter.ISO_LOCAL_DATE;
-        expirationField.setConverter(new LocalDateStringConverter(format, format));
+        expirationField.setConverter(new StringConverter<LocalDate>() {
+            @Override
+            public String toString(LocalDate date) {
+                // JavaFX can redraw the editor when committing on Enter or focus loss.
+                if (rejectedDateText != null && Objects.equals(date, expirationField.getValue())) {
+                    return rejectedDateText;
+                }
+                return date == null ? "" : date.toString();
+            }
+
+            @Override
+            public LocalDate fromString(String text) {
+                try {
+                    LocalDate date = parseExpiration(text);
+                    rejectedDateText = null;
+                    return date;
+                } catch (DateTimeParseException exception) {
+                    // Keep invalid text available for Save to reject without throwing
+                    // from JavaFX's automatic focus-loss commit.
+                    rejectedDateText = text;
+                    return expirationField.getValue();
+                }
+            }
+        });
+        expirationField.valueProperty().addListener((property, previous, date) -> {
+            rejectedDateText = null;
+            expirationField.getEditor().setText(expirationField.getConverter().toString(date));
+            showError(dateError, "");
+        });
+        expirationField.addEventFilter(KeyEvent.ANY, event -> {
+            if (event.getCode() == KeyCode.ENTER && !expirationField.isShowing()) {
+                try {
+                    parseExpiration(expirationField.getEditor().getText());
+                } catch (DateTimeParseException exception) {
+                    showError(dateError, "Please enter a valid date.");
+                    event.consume();
+                }
+            }
+        });
         expirationField.disableProperty().bind(noExpiration.selectedProperty());
         noExpiration.selectedProperty().addListener((property, previous, selected) -> {
             if (selected) {
+                rejectedDateText = null;
                 expirationField.setValue(null);
+                expirationField.getEditor().clear();
                 showError(dateError, "");
             }
         });
@@ -85,10 +128,16 @@ public final class ProductFormController {
 
         BigDecimal price = readPrice();
         Integer stock = readStock();
-        LocalDate expiry = expirationField.getValue();
-        boolean validDate = expiry == null || (expiry.getYear() >= 1000 && expiry.getYear() <= 9999);
-        showError(dateError, validDate ? "" : "Please enter a valid date.");
-        if (!nameMessage.isEmpty() || price == null || stock == null || !validDate) {
+        LocalDate expiry;
+        try {
+            expiry = noExpiration.isSelected() ? null : parseExpiration(expirationField.getEditor().getText());
+            showError(dateError, "");
+        } catch (DateTimeParseException exception) {
+            showError(dateError, "Please enter a valid date.");
+            expirationField.requestFocus();
+            return;
+        }
+        if (!nameMessage.isEmpty() || price == null || stock == null) {
             return;
         }
         boolean expirationChanged = original == null || !Objects.equals(expiry, original.expirationDate());
@@ -108,6 +157,17 @@ public final class ProductFormController {
                     "This product changed or was removed. Cancel and refresh Inventory before editing again.",
                     "Changes were not saved. Please try again.");
         }
+    }
+
+    private static LocalDate parseExpiration(String text) {
+        String value = text.strip();
+        if (value.isEmpty()) {
+            return null;
+        }
+        if (!value.matches("[1-9][0-9]{3}-[0-9]{2}-[0-9]{2}")) {
+            throw new DateTimeParseException("Expected YYYY-MM-DD", value, 0);
+        }
+        return LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
     }
 
     private BigDecimal readPrice() {
@@ -151,6 +211,8 @@ public final class ProductFormController {
         confirmation.initOwner(saveButton.getScene().getWindow());
         confirmation.setTitle("Past expiration date");
         confirmation.setHeaderText(null);
+        ((Button) confirmation.getDialogPane().lookupButton(ButtonType.YES)).setDefaultButton(false);
+        ((Button) confirmation.getDialogPane().lookupButton(ButtonType.NO)).setDefaultButton(true);
         return confirmation.showAndWait().orElse(ButtonType.NO) == ButtonType.YES;
     }
 
