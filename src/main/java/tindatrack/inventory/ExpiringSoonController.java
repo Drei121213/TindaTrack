@@ -32,15 +32,18 @@ public final class ExpiringSoonController {
     @FXML private ComboBox<Integer> rangeSelector;
     @FXML private Label rangeLabel;
     @FXML private Label listMessage;
-    @FXML private Button retryButton;
+    @FXML private Button refreshButton;
+    @FXML private Label navigationMessage;
 
     private ProductDao products;
+    private Runnable onBack;
+    private Runnable onInventory;
     private LocalDate referenceDate;
     private Task<List<Product>> currentLoad;
 
     @FXML
     private void initialize() {
-        retryButton.managedProperty().bind(retryButton.visibleProperty());
+        navigationMessage.managedProperty().bind(navigationMessage.visibleProperty());
         rangeSelector.getItems().setAll(DEFAULT_RANGE_DAYS, 14, 30);
         rangeSelector.setValue(DEFAULT_RANGE_DAYS);
         rangeSelector.valueProperty().addListener((property, oldRange, newRange) -> {
@@ -65,9 +68,26 @@ public final class ExpiringSoonController {
                 describeDaysLeft(ChronoUnit.DAYS.between(referenceDate, cell.getValue().expirationDate()))));
     }
 
-    public void configure(ProductDao products) {
+    public void configure(ProductDao products, Runnable onBack, Runnable onInventory) {
         this.products = products;
+        this.onBack = onBack;
+        this.onInventory = onInventory;
         loadProducts();
+    }
+
+    public void showNavigationError(String message) {
+        navigationMessage.setText(message);
+        navigationMessage.setVisible(true);
+    }
+
+    @FXML
+    private void handleBack() {
+        onBack.run();
+    }
+
+    @FXML
+    private void handleInventory() {
+        onInventory.run();
     }
 
     @FXML
@@ -78,7 +98,9 @@ public final class ExpiringSoonController {
             currentLoad.cancel();
         }
         rangeLabel.setText("Expired products and dates from " + today + " through " + cutoff);
-        retryButton.setVisible(false);
+        navigationMessage.setVisible(false);
+        refreshButton.setText("Refresh");
+        refreshButton.setDisable(true);
         listMessage.setText("Loading products...");
         expiringTable.getItems().clear();
 
@@ -97,6 +119,7 @@ public final class ExpiringSoonController {
             referenceDate = today;
             listMessage.setText("No products expiring soon.");
             expiringTable.getItems().setAll(load.getValue());
+            refreshButton.setDisable(false);
         });
         load.setOnFailed(event -> {
             if (currentLoad != load) {
@@ -107,7 +130,8 @@ public final class ExpiringSoonController {
                 listMessage.setText(denied.getMessage());
             } else {
                 listMessage.setText("Cannot load the list. Please try again.");
-                retryButton.setVisible(true);
+                refreshButton.setText("Retry");
+                refreshButton.setDisable(false);
             }
         });
 

@@ -43,6 +43,7 @@ public final class InventoryController {
 
     private ProductDao products;
     private Runnable onBack;
+    private Runnable onExpiringSoon;
     private String submittedSearch = "";
 
     @FXML
@@ -56,9 +57,10 @@ public final class InventoryController {
                 new ReadOnlyObjectWrapper<>(cell.getValue().expirationDate()));
     }
 
-    public void configure(ProductDao products, Runnable onBack) {
+    public void configure(ProductDao products, Runnable onBack, Runnable onExpiringSoon) {
         this.products = products;
         this.onBack = onBack;
+        this.onExpiringSoon = onExpiringSoon;
         loadProducts("");
     }
 
@@ -237,5 +239,10 @@ public final class InventoryController {
     @FXML
     private void handleBack() {
         onBack.run();
+    }
+
+    @FXML
+    private void handleExpiringSoon() {
+        onExpiringSoon.run();
     }
 }

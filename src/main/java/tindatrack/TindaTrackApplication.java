@@ -2,6 +2,7 @@ package tindatrack;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.function.Consumer;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -16,6 +17,7 @@ import tindatrack.core.SessionState.AccessDeniedException;
 import tindatrack.guest.GuestController;
 import tindatrack.guest.GuestService;
 import tindatrack.guest.GuestSession;
+import tindatrack.inventory.ExpiringSoonController;
 import tindatrack.inventory.InventoryController;
 import tindatrack.inventory.ProductDao;
 
@@ -75,31 +77,55 @@ public class TindaTrackApplication extends Application {
         Parent home = loader.getRoot();
 
         sessions.begin(owner);
-        controller.configure(owner.fullName(), () -> {
-            try {
-                showInventory(stage, owner, home);
-            } catch (IOException exception) {
-                controller.showNavigationError("Could not open Inventory. Please try again.");
-            } catch (AccessDeniedException exception) {
-                controller.showNavigationError(exception.getMessage());
-            }
-        }, () -> returnToLogin(stage));
+        ProductDao products = new ProductDao(sessions, owner);
+        controller.configure(owner.fullName(),
+                () -> navigateOwner(owner, "Inventory", controller::showNavigationError,
+                        () -> showInventory(stage, owner, home, products)),
+                () -> navigateOwner(owner, "Expiring Soon", controller::showNavigationError,
+                        () -> showExpiringSoon(stage, owner, home, products)),
+                () -> returnToLogin(stage));
         stage.getScene().setRoot(home);
     }
 
-    private void showInventory(Stage stage, OwnerSession owner, Parent home) throws IOException {
-        sessions.requireActive(owner);
+    private void showInventory(Stage stage, OwnerSession owner, Parent home, ProductDao products)
+            throws IOException {
         FXMLLoader loader = loadView("inventory.fxml");
         InventoryController controller = loader.getController();
-        controller.configure(new ProductDao(sessions, owner), () -> {
-            try {
-                sessions.requireActive(owner);
-                stage.getScene().setRoot(home);
-            } catch (AccessDeniedException exception) {
-                controller.showNavigationError(exception.getMessage());
-            }
-        });
+        controller.configure(products,
+                () -> navigateOwner(owner, "Home", controller::showNavigationError,
+                        () -> stage.getScene().setRoot(home)),
+                () -> navigateOwner(owner, "Expiring Soon", controller::showNavigationError,
+                        () -> showExpiringSoon(stage, owner, home, products)));
         stage.getScene().setRoot(loader.getRoot());
+    }
+
+    private void showExpiringSoon(Stage stage, OwnerSession owner, Parent home, ProductDao products)
+            throws IOException {
+        FXMLLoader loader = loadView("expiring-soon.fxml");
+        ExpiringSoonController controller = loader.getController();
+        controller.configure(products,
+                () -> navigateOwner(owner, "Home", controller::showNavigationError,
+                        () -> stage.getScene().setRoot(home)),
+                () -> navigateOwner(owner, "Inventory", controller::showNavigationError,
+                        () -> showInventory(stage, owner, home, products)));
+        stage.getScene().setRoot(loader.getRoot());
+    }
+
+    private void navigateOwner(OwnerSession owner, String destination,
+                               Consumer<String> showError, ViewAction openView) {
+        try {
+            sessions.requireActive(owner);
+            openView.run();
+        } catch (IOException exception) {
+            showError.accept("Could not open " + destination + ". Please try again.");
+        } catch (AccessDeniedException exception) {
+            showError.accept(exception.getMessage());
+        }
+    }
+
+    @FunctionalInterface
+    private interface ViewAction {
+        void run() throws IOException;
     }
 
     private void showGuestMode(Stage stage) throws IOException {

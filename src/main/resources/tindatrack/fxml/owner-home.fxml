@@ -17,6 +17,7 @@
         <Label text="You are signed in as the store owner." wrapText="true"
                textAlignment="CENTER" styleClass="login-subtitle" />
         <Button text="Inventory" onAction="#handleInventory" styleClass="login-button" />
+        <Button text="Expiring Soon" onAction="#handleExpiringSoon" styleClass="login-button" />
         <Button text="Logout" onAction="#handleLogout" styleClass="guest-button" />
         <Label fx:id="navigationMessage" visible="false" managed="false" wrapText="true"
                styleClass="login-feedback" />

@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 4, Task 3
+## Current scope: Day 4, Task 4
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -613,8 +613,8 @@ and [foreign keys](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-
 
 ## Manual Git workflow
 
-Git commands are managed manually by the project owner. Suggested Day 4, Task 3
-commit message is `Filter expiring products and highlight expired rows`.
+Git commands are managed manually by the project owner. Suggested Day 4, Task 4
+commit message is `Connect Expiring Soon to owner navigation`.
 
 ## Day 3 integration verification
 
@@ -679,12 +679,25 @@ task. The query binds the cutoff as a SQL `DATE`. The controller uses
 due-today, and upcoming products. Expired rows are highlighted in red and
 carry the **Expired** label. A failed query displays a **Retry** button.
 
-The owner navigation link is scheduled for Task 4. Once it is available,
-check that 7 days is selected when opening the screen. Switch to 30 days and
-look for existing products with dates 8 to 30 days from today. Check that
-expired rows stay red in both ranges, that today's rows say **Expires Today**,
-and that blank dates are excluded. If the selected range has no matching
-products and there are no expired products, expect “No products expiring soon.”
+Sign in as the owner and select **Expiring Soon** from Home or Inventory. Use
+**Inventory** to return and edit a product using the existing form. Reopen
+**Expiring Soon** to read the saved dates. **Refresh** reloads the current range.
+
+1. Check that 7 days is selected when the screen opens. Switch to 30 days and
+   look for products with dates 8 to 30 days from today.
+2. In Inventory, edit a test product's date to within seven days and save.
+   Reopen Expiring Soon and check that the product is listed. Clear its date in
+   Inventory and confirm it disappears on reopening Expiring Soon.
+3. Return home, log out, and enter Guest Mode. Check the read-only product and
+   credit views and exit to login.
+
+Expired rows stay red in every range. Today's rows say **Expires Today**, and
+blank dates are excluded. If there are no matching products, the table shows
+“No products expiring soon.”
+
+`TindaTrackApplication` checks the active owner session before switching views.
+Both inventory screens share the owner's `ProductDao`. Date updates still use
+the existing Inventory form and prepared update.
 
 ## Day 2 integration verification
 

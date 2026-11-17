@@ -13,11 +13,17 @@
       fx:controller="tindatrack.inventory.ExpiringSoonController"
       styleClass="login-root" stylesheets="@../css/inventory.css,@../css/expiring-soon.css"
       spacing="12">
+    <HBox spacing="8">
+        <Button text="Back to Home" onAction="#handleBack" styleClass="guest-button" />
+        <Button text="Inventory" onAction="#handleInventory" styleClass="guest-button" />
+    </HBox>
     <Label text="Expiring Soon" styleClass="inventory-title" />
     <HBox alignment="CENTER_LEFT" spacing="8">
         <Label text="Show items expiring within" styleClass="field-label" />
         <ComboBox fx:id="rangeSelector" accessibleText="Expiration range in days" />
         <Label text="days" styleClass="field-label" />
+        <Button fx:id="refreshButton" text="Refresh" onAction="#loadProducts"
+                styleClass="guest-button" />
     </HBox>
     <Label fx:id="rangeLabel" wrapText="true" styleClass="inventory-status" />
 
@@ -39,6 +45,6 @@
         </placeholder>
     </TableView>
 
-    <Button fx:id="retryButton" text="Retry" onAction="#loadProducts"
-            visible="false" managed="false" styleClass="guest-button" />
+    <Label fx:id="navigationMessage" visible="false" managed="false" wrapText="true"
+           styleClass="registration-error" />
 </VBox>
