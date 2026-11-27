@@ -13,7 +13,6 @@
       fx:controller="tindatrack.credit.CreditController" spacing="8"
       styleClass="login-root,credit-root" stylesheets="@../css/credit.css">
     <HBox spacing="8">
-        <Button text="Back to Home" onAction="#handleBack" styleClass="guest-button" />
         <Button fx:id="refreshButton" text="Refresh" onAction="#loadCustomers" styleClass="guest-button" />
     </HBox>
     <Label text="Customer Credit Management" wrapText="true" styleClass="credit-title" />

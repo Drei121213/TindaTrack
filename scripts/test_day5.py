@@ -1,4 +1,4 @@
-"""Run approved Day 5 checks on a disposable MySQL server inside target.
+"""Run credit regressions and optional navigation checks on disposable MySQL.
 
 Requires Java 21, Maven, MySQL Server 8, and Python 3. No production configuration
 is read or changed. This script deliberately creates test fixtures in its own
@@ -6,6 +6,7 @@ server; run it only when that test-data generation is approved.
 """
 
 from datetime import datetime, timedelta, timezone
+import argparse
 from pathlib import Path
 import json
 import os
@@ -52,6 +53,15 @@ def junit_results(path):
 
 
 def main():
+    global REPORT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--navigation-checks", action="store_true", help="Also check Day 6 owner navigation and state.")
+    parser.add_argument("--report", help="Project-local JSON report path; defaults to the matching day.")
+    args = parser.parse_args()
+    report_name = args.report or ("docs/testing/day6-task2-results.json" if args.navigation_checks else "docs/testing/day5-results.json")
+    REPORT = (PROJECT / report_name).resolve()
+    if not REPORT.is_relative_to(PROJECT):
+        raise SystemExit("The test report must stay inside the project.")
     if MAVEN is None or not (JAVA_HOME / "bin" / "java.exe").is_file():
         raise SystemExit("Java and Maven must be installed; select Java 21 with JAVA_HOME.")
     for executable in ("mysqld.exe", "mysql.exe", "mysqladmin.exe"):
@@ -70,6 +80,7 @@ def main():
 
     TARGET.mkdir(exist_ok=True)
     report = {"executedAt": datetime.now(timezone(timedelta(hours=8))).isoformat(),
+              "scope": "Day 6 Task 2 navigation regression" if args.navigation_checks else "Day 5 acceptance",
               "environment": "Java 21 / JavaFX / disposable MySQL 8 inside project target",
               "productionDatabaseTouched": False,
               "seedApproval": "User approved isolated test data for Day 5 Task 5.",
@@ -140,6 +151,7 @@ def main():
             test_env = env.copy()
             test_env.update(TINDATRACK_ISOLATED_TESTS="true", TINDATRACK_TEST_DATADIR=str(data),
                             TINDATRACK_TEST_TARGET=str(TARGET.resolve()))
+            test_env["TINDATRACK_NAVIGATION_CHECKS"] = str(args.navigation_checks).lower()
             print("Running isolated database tests...", flush=True)
             database = run([MAVEN, "-B", "-o", "-Dtest=CreditDatabaseTest",
                             "-Dtindatrack.test.workingDirectory=" + str(root), "test"], env=test_env)

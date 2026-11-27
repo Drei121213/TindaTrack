@@ -2,16 +2,18 @@ package tindatrack;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.function.Consumer;
-
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import tindatrack.authentication.LoginController;
 import tindatrack.authentication.OwnerSession;
 import tindatrack.core.OwnerHomeController;
+import tindatrack.core.OwnerNavigationController;
+import tindatrack.core.OwnerNavigationController.Destination;
 import tindatrack.core.SessionState;
 import tindatrack.core.SessionState.AccessDeniedException;
 import tindatrack.credit.CreditController;
@@ -23,34 +25,40 @@ import tindatrack.inventory.ExpiringSoonController;
 import tindatrack.inventory.InventoryController;
 import tindatrack.inventory.ProductDao;
 
-/**
- * Entry point for the TindaTrack desktop application.
- */
+/** One main window, with owner views reused only during the current login. */
 public class TindaTrackApplication extends Application {
 
     private final SessionState sessions = new SessionState();
+    private BorderPane ownerLayout;
+    private OwnerNavigationController navigation;
+    private Destination currentDestination;
+    private Runnable leaveCurrentView = () -> { };
+    private ProductDao products;
+    private CreditDao credits;
+    private Parent homeView;
+    private Parent inventoryView;
+    private InventoryController inventory;
+    private Parent expiringView;
+    private ExpiringSoonController expiring;
+    private Parent creditView;
+    private CreditController credit;
 
-    /**
-     * Starts the JavaFX runtime and calls start on the JavaFX application thread.
-     */
     public static void main(String[] args) {
         launch(args);
     }
 
-    /**
-     * Loads the login layout and displays the application's first window.
-     */
     @Override
-    public void start(Stage primaryStage) throws IOException {
-        primaryStage.setTitle("TindaTrack");
-        primaryStage.setMinWidth(460);
-        primaryStage.setMinHeight(540);
-        showLogin(primaryStage);
-        primaryStage.show();
+    public void start(Stage stage) throws IOException {
+        stage.setTitle("TindaTrack");
+        showLogin(stage);
+        stage.show();
     }
 
     private void showLogin(Stage stage) throws IOException {
         sessions.clear();
+        discardOwnerViews();
+        stage.setMinWidth(460);
+        stage.setMinHeight(540);
         FXMLLoader loader = loadView("login.fxml");
         LoginController controller = loader.getController();
         controller.configure(sessions, owner -> {
@@ -74,85 +82,130 @@ public class TindaTrackApplication extends Application {
     }
 
     private void showOwnerHome(Stage stage, OwnerSession owner) throws IOException {
-        FXMLLoader loader = loadView("owner-home.fxml");
-        OwnerHomeController controller = loader.getController();
-        Parent home = loader.getRoot();
-
+        FXMLLoader homeLoader = loadView("owner-home.fxml");
+        FXMLLoader navigationLoader = loadView("owner-navigation.fxml");
+        ((OwnerHomeController) homeLoader.getController()).configure(owner.fullName());
         sessions.begin(owner);
-        ProductDao products = new ProductDao(sessions, owner);
-        controller.configure(owner.fullName(),
-                () -> navigateOwner(owner, "Inventory", controller::showNavigationError,
-                        () -> showInventory(stage, owner, home, products)),
-                () -> navigateOwner(owner, "Expiring Soon", controller::showNavigationError,
-                        () -> showExpiringSoon(stage, owner, home, products)),
-                () -> navigateOwner(owner, "Credit Management", controller::showNavigationError,
-                        () -> showCredit(stage, owner, home)),
-                () -> returnToLogin(stage));
-        stage.getScene().setRoot(home);
+        homeView = homeLoader.getRoot();
+        products = new ProductDao(sessions, owner);
+        credits = new CreditDao(sessions, owner);
+        navigation = navigationLoader.getController();
+        ownerLayout = new BorderPane();
+        ownerLayout.setLeft(navigationLoader.getRoot());
+        BorderPane signedInLayout = ownerLayout;
+        navigation.configure(owner.fullName(), destination -> navigateOwner(stage, owner, destination), () -> {
+            if (stage.getScene().getRoot() == signedInLayout && canLeaveOwnerView(stage)) {
+                returnToLogin(stage);
+            }
+        });
+        stage.getScene().setRoot(ownerLayout);
+        // Allow room for the sidebar and the existing table columns.
+        stage.setMinWidth(900);
+        stage.setMinHeight(600);
+        stage.setWidth(Math.max(stage.getWidth(), 1000));
+        stage.setHeight(Math.max(stage.getHeight(), 680));
+        showOwnerScreen(stage, owner, Destination.DASHBOARD);
     }
 
-    private void showCredit(Stage stage, OwnerSession owner, Parent home) throws IOException {
-        sessions.requireActive(owner);
-        FXMLLoader loader = loadView("credit.fxml");
-        CreditController controller = loader.getController();
-        controller.configure(new CreditDao(sessions, owner),
-                () -> navigateOwner(owner, "Home", controller::showNavigationError,
-                        () -> stage.getScene().setRoot(home)));
-        stage.getScene().setRoot(loader.getRoot());
-    }
-
-    private void showInventory(Stage stage, OwnerSession owner, Parent home, ProductDao products)
-            throws IOException {
-        FXMLLoader loader = loadView("inventory.fxml");
-        InventoryController controller = loader.getController();
-        controller.configure(products,
-                () -> navigateOwner(owner, "Home", controller::showNavigationError,
-                        () -> stage.getScene().setRoot(home)),
-                () -> navigateOwner(owner, "Expiring Soon", controller::showNavigationError,
-                        () -> showExpiringSoon(stage, owner, home, products)));
-        stage.getScene().setRoot(loader.getRoot());
-    }
-
-    private void showExpiringSoon(Stage stage, OwnerSession owner, Parent home, ProductDao products)
-            throws IOException {
-        FXMLLoader loader = loadView("expiring-soon.fxml");
-        ExpiringSoonController controller = loader.getController();
-        controller.configure(products,
-                () -> navigateOwner(owner, "Home", controller::showNavigationError,
-                        () -> stage.getScene().setRoot(home)),
-                () -> navigateOwner(owner, "Inventory", controller::showNavigationError,
-                        () -> showInventory(stage, owner, home, products)));
-        stage.getScene().setRoot(loader.getRoot());
-    }
-
-    /**
-     * Rechecks the owner session before opening a destination and reports loading
-     * or access failures through the supplied screen feedback callback.
-     */
-    private void navigateOwner(OwnerSession owner, String destination,
-                               Consumer<String> showError, ViewAction openView) {
+    private void navigateOwner(Stage stage, OwnerSession owner, Destination destination) {
         try {
             sessions.requireActive(owner);
-            openView.run();
+            if (canLeaveOwnerView(stage)) {
+                showOwnerScreen(stage, owner, destination);
+            }
+        } catch (AccessDeniedException denied) {
+            if (navigation != null) navigation.showError(denied.getMessage());
         } catch (IOException exception) {
-            showError.accept("Could not open " + destination + ". Please try again.");
-        } catch (AccessDeniedException exception) {
-            showError.accept(exception.getMessage());
+            if (navigation != null) navigation.showError("Could not open the screen. Please try again.");
         }
     }
 
-    @FunctionalInterface
-    private interface ViewAction {
-        void run() throws IOException;
+    private boolean canLeaveOwnerView(Stage stage) {
+        if ((inventory != null && inventory.isDeleting())
+                || Window.getWindows().stream().anyMatch(window -> window instanceof Stage dialog
+                        && dialog.getOwner() == stage && dialog.isShowing())) {
+            navigation.showError("Finish or cancel the current operation before leaving this screen.");
+            return false;
+        }
+        return true;
+    }
+
+    /** Prepare a destination first, so a layout error leaves the current view usable. */
+    private void showOwnerScreen(Stage stage, OwnerSession owner, Destination destination) throws IOException {
+        sessions.requireActive(owner);
+        if (destination == currentDestination) return;
+
+        Parent next;
+        Runnable enter = () -> { };
+        Runnable leave = () -> { };
+        switch (destination) {
+            case DASHBOARD -> next = homeView;
+            case INVENTORY -> {
+                if (inventoryView == null) {
+                    FXMLLoader loader = loadView("inventory.fxml");
+                    inventory = loader.getController();
+                    inventory.configure(products);
+                    inventoryView = loader.getRoot();
+                }
+                next = inventoryView;
+                enter = inventory::activate;
+                leave = inventory::deactivate;
+            }
+            case EXPIRING -> {
+                if (expiringView == null) {
+                    FXMLLoader loader = loadView("expiring-soon.fxml");
+                    expiring = loader.getController();
+                    expiring.configure(products);
+                    expiringView = loader.getRoot();
+                }
+                next = expiringView;
+                enter = expiring::activate;
+                leave = expiring::deactivate;
+            }
+            case CREDIT -> {
+                if (creditView == null) {
+                    FXMLLoader loader = loadView("credit.fxml");
+                    credit = loader.getController();
+                    credit.configure(credits);
+                    creditView = loader.getRoot();
+                }
+                next = creditView;
+                enter = credit::activate;
+                leave = credit::deactivate;
+            }
+            default -> throw new IllegalArgumentException("Unknown owner destination.");
+        }
+        leaveCurrentView.run();
+        ownerLayout.setCenter(next);
+        currentDestination = destination;
+        leaveCurrentView = leave;
+        navigation.setCurrent(destination);
+        enter.run();
+    }
+
+    private void discardOwnerViews() {
+        leaveCurrentView.run();
+        leaveCurrentView = () -> { };
+        currentDestination = null;
+        ownerLayout = null;
+        navigation = null;
+        homeView = null;
+        inventoryView = null;
+        inventory = null;
+        expiringView = null;
+        expiring = null;
+        creditView = null;
+        credit = null;
+        products = null;
+        credits = null;
     }
 
     private void showGuestMode(Stage stage) throws IOException {
         FXMLLoader loader = loadView("guest.fxml");
-        GuestController controller = loader.getController();
-
         GuestSession guest = new GuestSession();
         sessions.begin(guest);
-        controller.configure(new GuestService(sessions, guest), () -> returnToLogin(stage));
+        ((GuestController) loader.getController()).configure(
+                new GuestService(sessions, guest), () -> returnToLogin(stage));
         stage.getScene().setRoot(loader.getRoot());
     }
 
@@ -164,23 +217,25 @@ public class TindaTrackApplication extends Application {
         }
     }
 
-    private FXMLLoader loadView(String fileName) throws IOException {
-        URL fxmlUrl = getClass().getResource("/tindatrack/fxml/" + fileName);
-        if (fxmlUrl == null) {
-            throw new IOException("The " + fileName + " layout could not be found.");
-        }
-        FXMLLoader loader = new FXMLLoader(fxmlUrl);
+    @Override
+    public void stop() {
+        sessions.clear();
+        discardOwnerViews();
+    }
+
+    private FXMLLoader loadView(String name) throws IOException {
+        URL resource = getClass().getResource("/tindatrack/fxml/" + name);
+        if (resource == null) throw new IOException("The " + name + " layout could not be found.");
+        FXMLLoader loader = new FXMLLoader(resource);
         loader.load();
         return loader;
     }
 
     private Scene createScene(Parent root) throws IOException {
-        URL cssUrl = getClass().getResource("/tindatrack/css/login.css");
-        if (cssUrl == null) {
-            throw new IOException("The login stylesheet could not be found.");
-        }
+        URL css = getClass().getResource("/tindatrack/css/login.css");
+        if (css == null) throw new IOException("The login stylesheet could not be found.");
         Scene scene = new Scene(root, 640, 560);
-        scene.getStylesheets().add(cssUrl.toExternalForm());
+        scene.getStylesheets().add(css.toExternalForm());
         return scene;
     }
 }

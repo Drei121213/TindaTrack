@@ -29,6 +29,10 @@ public final class ProductDao {
         this.owner = owner;
     }
 
+    public void requireOwnerAccess() {
+        sessions.requireActive(owner);
+    }
+
     /**
      * Checks the product name and inserts under a shared MySQL name lock.
      * Rechecks the owner session after waiting and immediately before the insert.
@@ -154,11 +158,14 @@ public final class ProductDao {
                 WHERE LOCATE(?, name) > 0
                 ORDER BY name, product_id
                 """;
+        List<Product> found;
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, name.strip());
-            return readProducts(statement);
+            found = readProducts(statement);
         }
+        requireOwnerAccess();
+        return found;
     }
 
     /** Finds expired products and products due on or before the cutoff. */
@@ -170,11 +177,14 @@ public final class ProductDao {
                 WHERE expiration_date IS NOT NULL AND expiration_date <= ?
                 ORDER BY expiration_date, name, product_id
                 """;
+        List<Product> found;
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setObject(1, cutoff, Types.DATE);
-            return readProducts(statement);
+            found = readProducts(statement);
         }
+        requireOwnerAccess();
+        return found;
     }
 
     private List<Product> readProducts(PreparedStatement statement) throws SQLException {

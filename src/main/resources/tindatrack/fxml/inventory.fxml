@@ -13,10 +13,6 @@
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="tindatrack.inventory.InventoryController"
       styleClass="login-root" stylesheets="@../css/inventory.css" spacing="12">
-    <HBox spacing="8">
-        <Button text="Back to Home" onAction="#handleBack" styleClass="guest-button" />
-        <Button text="Expiring Soon" onAction="#handleExpiringSoon" styleClass="guest-button" />
-    </HBox>
     <Label text="Inventory Management" styleClass="inventory-title" />
 
     <HBox alignment="CENTER_LEFT" spacing="8">

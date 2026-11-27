@@ -42,9 +42,11 @@ public final class InventoryController {
     @FXML private Label statusLabel;
 
     private ProductDao products;
-    private Runnable onBack;
-    private Runnable onExpiringSoon;
     private String submittedSearch = "";
+    private Integer selectedProductId;
+    private boolean active;
+    private Task<List<Product>> currentLoad;
+    private Task<ProductDao.DeleteResult> deletion;
 
     @FXML
     private void initialize() {
@@ -57,15 +59,34 @@ public final class InventoryController {
                 new ReadOnlyObjectWrapper<>(cell.getValue().expirationDate()));
     }
 
-    public void configure(ProductDao products, Runnable onBack, Runnable onExpiringSoon) {
+    public void configure(ProductDao products) {
         this.products = products;
-        this.onBack = onBack;
-        this.onExpiringSoon = onExpiringSoon;
+    }
+
+    public void activate() {
+        products.requireOwnerAccess();
+        active = true;
         loadProducts("");
     }
 
-    public void showNavigationError(String message) {
-        statusLabel.setText(message);
+    public void deactivate() {
+        rememberSelection();
+        active = false;
+        if (currentLoad != null) {
+            currentLoad.cancel();
+            currentLoad = null;
+        }
+        productsTable.getItems().clear();
+    }
+
+    /** A submitted delete must finish before navigation or logout. */
+    public boolean isDeleting() {
+        return deletion != null;
+    }
+
+    private void rememberSelection() {
+        Product selected = productsTable.getSelectionModel().getSelectedItem();
+        if (selected != null) selectedProductId = selected.id();
     }
 
     @FXML
@@ -101,6 +122,7 @@ public final class InventoryController {
                 }
             });
             dialog.showAndWait();
+            if (!active) return;
             if (form.wasSaved()) {
                 if (original == null) {
                     searchField.clear();
@@ -119,6 +141,9 @@ public final class InventoryController {
      * @param successMessage optional completed-action message to retain during refresh
      */
     private void loadProducts(String successMessage) {
+        if (!active) return;
+        rememberSelection();
+        if (currentLoad != null) currentLoad.cancel();
         String search = submittedSearch;
         statusLabel.setText(successMessage.isEmpty() ? "Loading products..."
                 : successMessage + " Refreshing inventory...");
@@ -131,17 +156,34 @@ public final class InventoryController {
                 return search.isEmpty() ? products.findAll() : products.findByName(search);
             }
         };
+        currentLoad = task;
         task.setOnSucceeded(event -> {
-            productsTable.getItems().setAll(task.getValue());
-            String emptyMessage = search.isEmpty() ? "No products to display yet." : "No products found.";
-            productsTable.setPlaceholder(new Label(emptyMessage));
-            statusLabel.setText(successMessage);
-            setLoading(false);
+            if (!active || currentLoad != task) return;
+            currentLoad = null;
+            try {
+                products.requireOwnerAccess();
+                productsTable.getItems().setAll(task.getValue());
+                productsTable.sort();
+                Product selected = productsTable.getItems().stream()
+                        .filter(p -> selectedProductId != null && p.id() == selectedProductId)
+                        .findFirst().orElse(null);
+                productsTable.getSelectionModel().select(selected);
+                selectedProductId = selected == null ? null : selected.id();
+                if (selected != null) productsTable.scrollTo(selected);
+                String emptyMessage = search.isEmpty() ? "No products to display yet." : "No products found.";
+                productsTable.setPlaceholder(new Label(emptyMessage));
+                statusLabel.setText(successMessage);
+                setLoading(false);
+            } catch (AccessDeniedException denied) {
+                showAccessDenied(denied);
+            }
         });
         task.setOnFailed(event -> {
+            if (!active || currentLoad != task) return;
+            currentLoad = null;
             if (task.getException() instanceof AccessDeniedException denied) {
-                productsTable.getItems().clear();
-                statusLabel.setText(denied.getMessage());
+                showAccessDenied(denied);
+                return;
             } else {
                 String message = !successMessage.isEmpty()
                         ? successMessage + " Could not refresh the inventory."
@@ -168,6 +210,12 @@ public final class InventoryController {
         addProductButton.setDisable(loading);
         editProductButton.setDisable(loading);
         deleteProductButton.setDisable(loading);
+    }
+
+    private void showAccessDenied(AccessDeniedException denied) {
+        productsTable.getItems().clear();
+        statusLabel.setText(denied.getMessage());
+        setLoading(true);
     }
 
     @FXML
@@ -208,10 +256,20 @@ public final class InventoryController {
                 return products.deleteProduct(selected);
             }
         };
+        deletion = task;
         task.setOnSucceeded(event -> {
+            deletion = null;
+            if (!active) return;
+            try {
+                products.requireOwnerAccess();
+            } catch (AccessDeniedException denied) {
+                showAccessDenied(denied);
+                return;
+            }
             switch (task.getValue()) {
                 case DELETED -> {
                     productsTable.getItems().remove(selected);
+                    selectedProductId = null;
                     loadProducts("Product deleted.");
                 }
                 case STALE -> {
@@ -225,6 +283,8 @@ public final class InventoryController {
             }
         });
         task.setOnFailed(event -> {
+            deletion = null;
+            if (!active) return;
             setLoading(false);
             String message = task.getException() instanceof AccessDeniedException denied
                     ? denied.getMessage() : "Product was not deleted. Please try again.";
@@ -241,13 +301,4 @@ public final class InventoryController {
         loadProducts("");
     }
 
-    @FXML
-    private void handleBack() {
-        onBack.run();
-    }
-
-    @FXML
-    private void handleExpiringSoon() {
-        onExpiringSoon.run();
-    }
 }

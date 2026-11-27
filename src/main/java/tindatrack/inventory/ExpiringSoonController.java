@@ -32,21 +32,19 @@ public final class ExpiringSoonController {
     @FXML private Label rangeLabel;
     @FXML private Label listMessage;
     @FXML private Button refreshButton;
-    @FXML private Label navigationMessage;
 
     private ProductDao products;
-    private Runnable onBack;
-    private Runnable onInventory;
+    private boolean active;
+    private Integer selectedProductId;
     private LocalDate referenceDate;
     private Task<List<Product>> currentLoad;
 
     @FXML
     private void initialize() {
-        navigationMessage.managedProperty().bind(navigationMessage.visibleProperty());
         rangeSelector.getItems().setAll(DEFAULT_RANGE_DAYS, 14, 30);
         rangeSelector.setValue(DEFAULT_RANGE_DAYS);
         rangeSelector.valueProperty().addListener((property, oldRange, newRange) -> {
-            if (products != null && newRange != null) {
+            if (active && products != null && newRange != null) {
                 loadProducts();
             }
         });
@@ -67,26 +65,29 @@ public final class ExpiringSoonController {
                 ExpirationDates.status(cell.getValue().expirationDate(), referenceDate)));
     }
 
-    public void configure(ProductDao products, Runnable onBack, Runnable onInventory) {
+    public void configure(ProductDao products) {
         this.products = products;
-        this.onBack = onBack;
-        this.onInventory = onInventory;
+    }
+
+    public void activate() {
+        products.requireOwnerAccess();
+        active = true;
         loadProducts();
     }
 
-    public void showNavigationError(String message) {
-        navigationMessage.setText(message);
-        navigationMessage.setVisible(true);
+    public void deactivate() {
+        rememberSelection();
+        active = false;
+        if (currentLoad != null) {
+            currentLoad.cancel();
+            currentLoad = null;
+        }
+        expiringTable.getItems().clear();
     }
 
-    @FXML
-    private void handleBack() {
-        onBack.run();
-    }
-
-    @FXML
-    private void handleInventory() {
-        onInventory.run();
+    private void rememberSelection() {
+        Product selected = expiringTable.getSelectionModel().getSelectedItem();
+        if (selected != null) selectedProductId = selected.id();
     }
 
     /**
@@ -96,13 +97,14 @@ public final class ExpiringSoonController {
      */
     @FXML
     private void loadProducts() {
+        if (!active) return;
+        rememberSelection();
         LocalDate today = LocalDate.now();
         LocalDate cutoff = today.plusDays(rangeSelector.getValue());
         if (currentLoad != null) {
             currentLoad.cancel();
         }
         rangeLabel.setText("Expired products and dates from " + today + " through " + cutoff);
-        navigationMessage.setVisible(false);
         refreshButton.setText("Refresh");
         refreshButton.setDisable(true);
         listMessage.setText("Loading products...");
@@ -116,17 +118,28 @@ public final class ExpiringSoonController {
         };
         currentLoad = load;
         load.setOnSucceeded(event -> {
-            if (currentLoad != load) {
+            if (!active || currentLoad != load) {
                 return;
             }
             currentLoad = null;
-            referenceDate = today;
-            listMessage.setText("No products expiring soon.");
-            expiringTable.getItems().setAll(load.getValue());
-            refreshButton.setDisable(false);
+            try {
+                products.requireOwnerAccess();
+                referenceDate = today;
+                listMessage.setText("No products expiring soon.");
+                expiringTable.getItems().setAll(load.getValue());
+                Product selected = expiringTable.getItems().stream()
+                        .filter(p -> selectedProductId != null && p.id() == selectedProductId)
+                        .findFirst().orElse(null);
+                expiringTable.getSelectionModel().select(selected);
+                selectedProductId = selected == null ? null : selected.id();
+                if (selected != null) expiringTable.scrollTo(selected);
+                refreshButton.setDisable(false);
+            } catch (AccessDeniedException denied) {
+                listMessage.setText(denied.getMessage());
+            }
         });
         load.setOnFailed(event -> {
-            if (currentLoad != load) {
+            if (!active || currentLoad != load) {
                 return;
             }
             currentLoad = null;

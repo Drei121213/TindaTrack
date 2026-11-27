@@ -53,7 +53,8 @@ public final class CreditController {
     private final ObservableList<Customer> customers = FXCollections.observableArrayList();
     private final ObservableList<CreditTransaction> history = FXCollections.observableArrayList();
     private CreditDao credits;
-    private Runnable onBack;
+    private boolean active;
+    private Integer selectedCustomerId;
     private Task<List<Customer>> customerLoad;
     private Task<List<CreditTransaction>> historyLoad;
     private Task<Optional<Customer>> paymentCustomerLoad;
@@ -91,24 +92,29 @@ public final class CreditController {
             }
         });
         customersTable.getSelectionModel().selectedItemProperty().addListener(
-                (property, previous, selected) -> loadHistory(selected));
+                (property, previous, selected) -> {
+                    if (selected != null) selectedCustomerId = selected.id();
+                    if (active) loadHistory(selected);
+                });
     }
 
-    public void configure(CreditDao credits, Runnable onBack) {
+    public void configure(CreditDao credits) {
         this.credits = credits;
-        this.onBack = onBack;
+    }
+
+    public void activate() {
         credits.requireOwnerAccess();
-        loadCustomers();
+        active = true;
+        loadCustomers("", selectedCustomerId);
     }
 
-    public void showNavigationError(String message) {
-        statusLabel.setText(message);
-    }
-
-    @FXML
-    private void handleBack() {
+    public void deactivate() {
+        Customer selected = customersTable.getSelectionModel().getSelectedItem();
+        if (selected != null) selectedCustomerId = selected.id();
+        active = false;
         cancelLoads();
-        onBack.run();
+        customers.clear();
+        clearHistory();
     }
 
     @FXML
@@ -133,6 +139,7 @@ public final class CreditController {
                 }
             });
             dialog.showAndWait();
+            if (!active) return;
             if (form.savedCustomerId() != null) {
                 searchField.clear();
                 loadCustomers("Utang saved.", form.savedCustomerId());
@@ -146,7 +153,7 @@ public final class CreditController {
 
     /** Reads the current balance before opening SB09, including the no-balance case. */
     private void handleRecordPayment(Customer selected) {
-        if (selected == null || customerLoad != null || paymentCustomerLoad != null) {
+        if (!active || selected == null || customerLoad != null || paymentCustomerLoad != null) {
             return;
         }
         try {
@@ -165,7 +172,7 @@ public final class CreditController {
         };
         paymentCustomerLoad = load;
         load.setOnSucceeded(event -> {
-            if (paymentCustomerLoad != load) {
+            if (!active || paymentCustomerLoad != load) {
                 return;
             }
             paymentCustomerLoad = null;
@@ -193,7 +200,7 @@ public final class CreditController {
             }
         });
         load.setOnFailed(event -> {
-            if (paymentCustomerLoad != load) {
+            if (!active || paymentCustomerLoad != load) {
                 return;
             }
             paymentCustomerLoad = null;
@@ -226,6 +233,7 @@ public final class CreditController {
             }
         });
         dialog.showAndWait();
+        if (!active) return;
         if (form.savedBalance() != null) {
             searchField.clear();
             loadCustomers("Payment saved. Remaining balance: ₱" + form.savedBalance().toPlainString(), customer.id());
@@ -238,14 +246,18 @@ public final class CreditController {
     /** Search and Refresh both reload the currently entered name fragment. */
     @FXML
     private void loadCustomers() {
-        loadCustomers("", null);
+        Customer selected = customersTable.getSelectionModel().getSelectedItem();
+        Integer restoreId = selectedCustomerId;
+        if (selected != null) restoreId = selected.id();
+        loadCustomers("", restoreId);
     }
 
     private void loadCustomers(String successMessage, Integer selectCustomerId) {
-        if (credits == null) {
+        if (!active || credits == null) {
             return;
         }
         cancelLoads();
+        selectedCustomerId = selectCustomerId;
         String search = searchField.getText().strip();
         customers.clear();
         clearHistory();
@@ -262,28 +274,32 @@ public final class CreditController {
         };
         customerLoad = load;
         load.setOnSucceeded(event -> {
-            if (customerLoad != load) {
+            if (!active || customerLoad != load) {
                 return;
             }
             customerLoad = null;
             try {
                 credits.requireOwnerAccess();
                 customers.setAll(load.getValue());
+                customersTable.sort();
                 customerPlaceholder.setText(search.isEmpty()
                         ? "No customers recorded yet." : "No customers found.");
                 statusLabel.setText((successMessage.isEmpty() ? "" : successMessage + " ")
                         + customers.size() + " customer(s). Select a customer to view history.");
                 setLoading(false);
                 if (selectCustomerId != null) {
-                    customers.stream().filter(c -> c.id() == selectCustomerId)
-                            .findFirst().ifPresent(customersTable.getSelectionModel()::select);
+                    Customer selected = customers.stream().filter(c -> c.id() == selectCustomerId)
+                            .findFirst().orElse(null);
+                    customersTable.getSelectionModel().select(selected);
+                    selectedCustomerId = selected == null ? null : selected.id();
+                    if (selected != null) customersTable.scrollTo(selected);
                 }
             } catch (AccessDeniedException denied) {
                 showAccessDenied(denied);
             }
         });
         load.setOnFailed(event -> {
-            if (customerLoad != load) {
+            if (!active || customerLoad != load) {
                 return;
             }
             customerLoad = null;
@@ -302,7 +318,7 @@ public final class CreditController {
     private void loadHistory(Customer customer) {
         cancelHistory();
         clearHistory();
-        if (customer == null) {
+        if (!active || customer == null) {
             return;
         }
         historyTitle.setText("History — " + customer.name());
@@ -315,20 +331,21 @@ public final class CreditController {
         };
         historyLoad = load;
         load.setOnSucceeded(event -> {
-            if (historyLoad != load) {
+            if (!active || historyLoad != load) {
                 return;
             }
             historyLoad = null;
             try {
                 credits.requireOwnerAccess();
                 history.setAll(load.getValue());
+                historyTable.sort();
                 historyPlaceholder.setText("No transactions recorded for this customer.");
             } catch (AccessDeniedException denied) {
                 showAccessDenied(denied);
             }
         });
         load.setOnFailed(event -> {
-            if (historyLoad != load) {
+            if (!active || historyLoad != load) {
                 return;
             }
             historyLoad = null;

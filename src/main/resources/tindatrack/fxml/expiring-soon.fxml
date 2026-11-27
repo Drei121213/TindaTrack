@@ -13,10 +13,6 @@
       fx:controller="tindatrack.inventory.ExpiringSoonController"
       styleClass="login-root" stylesheets="@../css/inventory.css,@../css/expiring-soon.css"
       spacing="12">
-    <HBox spacing="8">
-        <Button text="Back to Home" onAction="#handleBack" styleClass="guest-button" />
-        <Button text="Inventory" onAction="#handleInventory" styleClass="guest-button" />
-    </HBox>
     <Label text="Expiring Soon" styleClass="inventory-title" />
     <HBox alignment="CENTER_LEFT" spacing="8">
         <Label text="Show items expiring within" styleClass="field-label" />
@@ -45,6 +41,4 @@
         </placeholder>
     </TableView>
 
-    <Label fx:id="navigationMessage" visible="false" managed="false" wrapText="true"
-           styleClass="registration-error" />
 </VBox>

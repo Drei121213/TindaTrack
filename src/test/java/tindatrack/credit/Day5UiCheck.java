@@ -28,8 +28,10 @@ import tindatrack.authentication.UserDao;
 import tindatrack.core.DatabaseConnection;
 import tindatrack.core.PasswordHasher;
 import tindatrack.core.SessionState;
+import tindatrack.core.OwnerNavigationController.Destination;
 import tindatrack.guest.GuestService;
 import tindatrack.inventory.Product;
+import tindatrack.inventory.ProductDao;
 import tindatrack.testing.IsolatedDatabase;
 
 /** Automated JavaFX acceptance checks. Run only through scripts/test_day5.py. */
@@ -166,6 +168,14 @@ public final class Day5UiCheck {
                 check(text(form(), "#balanceLabel").equals("Current Balance: ₱150.00"), "Stale balance not updated");
                 cancel(); assertBalance("Aling Nena", "150.00");
             }, "Another connection paid 100.00 while a 200.00 form was open; save rejected against 150.00 and refreshed the form balance.");
+            if ("true".equals(System.getenv("TINDATRACK_NAVIGATION_CHECKS"))) {
+                runCase("Day6_RememberOwnerViews", Day5UiCheck::rememberOwnerViews,
+                        "Sidebar routes retained inventory/customer searches and selections, expiration range and selection, and the same owner session.");
+                runCase("Day6_RefreshOnReturn", Day5UiCheck::refreshOnReturn,
+                        "Reopening Credit and Inventory read committed changes while retaining their search state.");
+                runCase("Day6_LeaveDuringLoads", Day5UiCheck::leaveDuringLoads,
+                        "Leaving Credit, Inventory and Expiring Soon during loads cleared their tables; obsolete callbacks did not restore rows. One main stage remained.");
+            }
             runCase("Day5_InventoryExpirationRegression", Day5UiCheck::inventoryRegression,
                     "Owner inventory add, search, edit and confirmed delete worked; Expiring Soon listed the expired fixture and navigation preserved the session.");
             runCase("GuestMode_CreditTab", Day5UiCheck::guestBalances,
@@ -173,6 +183,10 @@ public final class Day5UiCheck {
             runCase("GuestMode_NoOwnerFunctions", Day5UiCheck::guestRestrictions,
                     "Guest UI had no owner controls; owner credit route and both write services rejected guest access; exit cleared pending rows.");
             login();
+            if ("true".equals(System.getenv("TINDATRACK_NAVIGATION_CHECKS"))) {
+                runCase("Day6_NewLoginClearsViewState", Day5UiCheck::newLoginClearsViewState,
+                        "After logout and guest exit, a new owner login started with empty searches, no selected customer/product, and the default seven-day range.");
+            }
             // Keep this payment for the second process to verify durable payment history.
             pay("Aling Rosa", "5");
             // B4 requires closing immediately after the utang save, with no further UI action.
@@ -186,6 +200,101 @@ public final class Day5UiCheck {
             });
             Platform.exit();
         }
+    }
+
+    private static void rememberOwnerViews() throws Exception {
+        click("Inventory"); waitList();
+        setText(stage, "#searchField", "Lucky"); click("Search"); waitList();
+        fx(() -> { ((TableView<?>)stage.getScene().lookup("#productsTable")).getSelectionModel().select(0); return null; });
+        int productId = fx(() -> ((Product)((TableView<?>)stage.getScene().lookup("#productsTable"))
+                .getSelectionModel().getSelectedItem()).id());
+        click("Expiring Soon"); waitList();
+        fx(() -> {
+            @SuppressWarnings("unchecked") ComboBox<Integer> range = (ComboBox<Integer>)stage.getScene().lookup("#rangeSelector");
+            range.setValue(30); return null;
+        });
+        waitList();
+        fx(() -> { ((TableView<?>)stage.getScene().lookup("#expiringTable")).getSelectionModel().select(0); return null; });
+        int expiringId = fx(() -> ((Product)((TableView<?>)stage.getScene().lookup("#expiringTable"))
+                .getSelectionModel().getSelectedItem()).id());
+        click("Credit Management"); waitList();
+        setText(stage, "#searchField", "Nena"); click("Search"); waitList();
+        fx(() -> { ((TableView<?>)stage.getScene().lookup("#customersTable")).getSelectionModel().select(0); return null; });
+        int customerId = customer("Aling Nena").id();
+        click("Dashboard"); click("Inventory"); waitList();
+        check(fx(() -> ((TextField)stage.getScene().lookup("#searchField")).getText()).equals("Lucky"), "Inventory search was reset");
+        check(fx(() -> ((Product)((TableView<?>)stage.getScene().lookup("#productsTable"))
+                .getSelectionModel().getSelectedItem()).id()) == productId, "Inventory selection was reset");
+        click("Expiring Soon"); waitList();
+        check(fx(() -> ((ComboBox<?>)stage.getScene().lookup("#rangeSelector")).getValue()).equals(30), "Expiration range was reset");
+        check(fx(() -> ((Product)((TableView<?>)stage.getScene().lookup("#expiringTable"))
+                .getSelectionModel().getSelectedItem()).id()) == expiringId, "Expiration selection was reset");
+        click("Credit Management"); waitList();
+        check(fx(() -> ((TextField)stage.getScene().lookup("#searchField")).getText()).equals("Nena"), "Credit search was reset");
+        check(fx(() -> ((Customer)((TableView<?>)stage.getScene().lookup("#customersTable"))
+                .getSelectionModel().getSelectedItem()).id()) == customerId, "Customer selection was reset");
+        waitFor(() -> !((TableView<?>)stage.getScene().lookup("#historyTable")).getItems().isEmpty());
+        check(fx(() -> button(stage, "Credit Management").isDisabled()), "Current sidebar destination was not marked");
+        sessions.requireActive(owner);
+        ownerScreenshot();
+    }
+
+    private static void refreshOnReturn() throws Exception {
+        Customer nena = customer("Aling Nena");
+        click("Inventory"); waitList();
+        new CreditService(dao).recordUtang(new UtangRequest(nena.id(), nena.name(), "Navigation test", new BigDecimal("10.00"), LocalDate.now()));
+        ProductDao productDao = new ProductDao(sessions, owner);
+        Product original = productDao.findByName("Lucky Me Pancit Canton").getFirst();
+        BigDecimal newPrice = original.price().add(new BigDecimal("1.00"));
+        check(productDao.updateProduct(original, newPrice, original.stockQuantity(), original.expirationDate()), "Test product update failed");
+        click("Credit Management"); waitList();
+        assertBalance("Aling Nena", nena.balance().add(new BigDecimal("10.00")).toPlainString());
+        click("Inventory"); waitList();
+        check(fx(() -> ((Product)((TableView<?>)stage.getScene().lookup("#productsTable")).getItems().getFirst())
+                .price().equals(newPrice)), "Inventory did not read the committed price on return");
+        check(fx(() -> ((TextField)stage.getScene().lookup("#searchField")).getText()).equals("Lucky"), "Refreshing lost inventory search");
+        click("Credit Management"); waitList();
+    }
+
+    private static void leaveDuringLoads() throws Exception {
+        TableView<?> oldCredit = fx(() -> (TableView<?>)stage.getScene().lookup("#customersTable"));
+        fx(() -> { button(stage, "Refresh").fire(); button(stage, "Inventory").fire(); return null; }); waitList();
+        Thread.sleep(150);
+        check(fx(() -> oldCredit.getItems().isEmpty()), "Credit callback restored hidden rows");
+        TableView<?> oldInventory = fx(() -> (TableView<?>)stage.getScene().lookup("#productsTable"));
+        fx(() -> { button(stage, "Refresh").fire(); button(stage, "Expiring Soon").fire(); return null; }); waitList();
+        Thread.sleep(150);
+        check(fx(() -> oldInventory.getItems().isEmpty()), "Inventory callback restored hidden rows");
+        TableView<?> oldExpiring = fx(() -> (TableView<?>)stage.getScene().lookup("#expiringTable"));
+        fx(() -> { button(stage, "Refresh").fire(); button(stage, "Credit Management").fire(); return null; }); waitList();
+        Thread.sleep(150);
+        check(fx(() -> oldExpiring.getItems().isEmpty()), "Expiration callback restored hidden rows");
+        check(fx(() -> Window.getWindows().stream().filter(w -> w instanceof Stage && w.isShowing()).count()) == 1,
+                "Navigation created another main window");
+    }
+
+    private static void newLoginClearsViewState() throws Exception {
+        check(fx(() -> ((TextField)stage.getScene().lookup("#searchField")).getText().isEmpty()), "New login retained credit search");
+        check(fx(() -> ((TableView<?>)stage.getScene().lookup("#customersTable")).getSelectionModel().getSelectedItem() == null), "New login retained customer selection");
+        click("Inventory"); waitList();
+        check(fx(() -> ((TextField)stage.getScene().lookup("#searchField")).getText().isEmpty()), "New login retained inventory search");
+        check(fx(() -> ((TableView<?>)stage.getScene().lookup("#productsTable")).getSelectionModel().getSelectedItem() == null), "New login retained product selection");
+        click("Expiring Soon"); waitList();
+        check(fx(() -> ((ComboBox<?>)stage.getScene().lookup("#rangeSelector")).getValue()).equals(7), "New login retained old expiration range");
+        click("Credit Management"); waitList();
+    }
+
+    private static void ownerScreenshot() throws Exception {
+        fx(() -> {
+            Parent root = stage.getScene().getRoot(); root.applyCss(); root.layout();
+            javafx.scene.image.WritableImage image = root.snapshot(null, null);
+            java.awt.image.BufferedImage output = new java.awt.image.BufferedImage(
+                    (int)image.getWidth(), (int)image.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < output.getHeight(); y++) for (int x = 0; x < output.getWidth(); x++)
+                output.setRGB(x, y, image.getPixelReader().getArgb(x, y));
+            javax.imageio.ImageIO.write(output, "png", Path.of(System.getenv("TINDATRACK_TEST_TARGET"), "day6-task2-owner.png").toFile());
+            return null;
+        });
     }
 
     private static void login() throws Exception {
@@ -272,7 +381,7 @@ public final class Day5UiCheck {
     }
 
     private static void inventoryRegression() throws Exception {
-        click("Back to Home"); click("Inventory"); waitList();
+        click("Dashboard"); click("Inventory"); waitList();
         async(() -> { button(stage, "Add Product").fire(); return null; }); waitFor(() -> findForm() != null);
         setText(form(), "#nameField", "Regression Item"); setText(form(), "#priceField", "12"); setText(form(), "#stockField", "3");
         fx(() -> { ((DatePicker)findForm().getScene().lookup("#expirationField")).setValue(LocalDate.now().plusDays(2)); return null; }); save();
@@ -288,11 +397,11 @@ public final class Day5UiCheck {
         click("Expiring Soon"); waitList();
         check(fx(() -> ((TableView<?>)stage.getScene().lookup("#expiringTable")).getItems().stream()
                 .anyMatch(p -> ((Product)p).name().equals("Expired test item"))), "Expired fixture was not listed");
-        click("Back to Home"); sessions.requireActive(owner); click("Credit Management"); waitList();
+        click("Dashboard"); sessions.requireActive(owner); click("Credit Management"); waitList();
     }
 
     private static void guestBalances() throws Exception {
-        List<Customer> expected = dao.findCustomers(""); click("Back to Home"); click("Logout"); click("Continue as Guest (View Only)");
+        List<Customer> expected = dao.findCustomers(""); click("Dashboard"); click("Logout"); click("Continue as Guest (View Only)");
         fx(() -> { ((TabPane)stage.getScene().lookup("#guestTabs")).getSelectionModel().select(1); return null; });
         waitFor(() -> !((Button)stage.getScene().lookup("#refreshCreditButton")).isDisabled());
         fx(() -> {
@@ -313,8 +422,8 @@ public final class Day5UiCheck {
         CreditService ownerService = new CreditService(dao);
         expectDenied(() -> ownerService.recordPayment(new PaymentRequest(1, new BigDecimal("1"), LocalDate.now())));
         expectDenied(() -> ownerService.recordUtang(new UtangRequest(null, "Denied", "", new BigDecimal("1"), LocalDate.now())));
-        Method show = TindaTrackApplication.class.getDeclaredMethod("showCredit", Stage.class, OwnerSession.class, Parent.class); show.setAccessible(true);
-        try { fx(() -> { show.invoke(app, stage, owner, root); return null; }); throw new AssertionError("Guest opened owner credit"); }
+        Method show = TindaTrackApplication.class.getDeclaredMethod("showOwnerScreen", Stage.class, OwnerSession.class, Destination.class); show.setAccessible(true);
+        try { fx(() -> { show.invoke(app, stage, owner, Destination.CREDIT); return null; }); throw new AssertionError("Guest opened owner credit"); }
         catch (Exception denied) {
             Throwable cause = denied; while (cause.getCause() != null) cause = cause.getCause();
             check(cause instanceof SessionState.AccessDeniedException, "Unexpected route error");

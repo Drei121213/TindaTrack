@@ -3,13 +3,20 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 4 complete
+## Current scope: Day 6, Task 2
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
-from SB12. A successful login opens a temporary owner home screen with a
-welcome message, Inventory, and Logout. **Continue as Guest (View Only)** opens product
+from SB12. A successful login opens the existing owner Home with a welcome
+message and a shared sidebar: **Dashboard**, **Inventory**, **Credit Management**,
+**Expiring Soon**, and **Logout**. **Continue as Guest (View Only)** opens product
 search and customer balances without an owner account.
+
+Owner searches, selected rows, and the expiration range are remembered during the
+current login. Returning to a module reloads its data. Logout clears the remembered
+views. Earlier day-by-day notes use the old **Back to Home** label; its replacement
+is **Dashboard** in the shared sidebar. Those notes describe their original stage
+of development; the Day 6 navigation section below describes the current wiring.
 
 Day 1 includes the MySQL schema in `database/schema.sql`, a shared connection
 utility, and a manual command-line connection test. Registration and login use
@@ -29,7 +36,7 @@ names, prices, stock counts, customer names, and balances from the existing sche
 4. Select **Save**. The dialog closes, the inventory reloads, and the saved
    product appears. Try the same product name again and expect
    “This product already exists.”
-5. Select **Back to Home** or log out and open Guest Mode to check the separate
+5. Select **Dashboard** or log out and open Guest Mode to check the separate
    read-only route.
 
 `ProductFormController` validates the form and starts a background task.
@@ -1222,6 +1229,97 @@ The automated checks establish the recorded outcomes in the isolated environment
 Keyboard-only interaction and visual use on your own display remain manual checks.
 No application failures remain unresolved in this run. The broader B4 cases outside
 the recorded coverage were not all rerun for Day 5.
+
+## Day 6, Task 2: Shared owner navigation
+
+Every owner module now uses one shared sidebar, including Logout. The existing
+Home greeting remains the Dashboard destination. Login, registration, guest views,
+and the existing modal forms retain their roles. Dashboard summary cards and the
+broader visual improvements are still separate work; no new metrics were added.
+
+`OwnerNavigationController` receives destination and logout callbacks from
+`TindaTrackApplication`. It marks the current destination and displays navigation
+errors. Its layout is `owner-navigation.fxml`. The application places this sidebar
+beside the active FXML screen in a BorderPane within the same main Stage and Scene.
+An owner screen is loaded on its first visit and reused until that owner logs out.
+The owner window expands to accommodate the sidebar and existing table columns.
+
+Each data controller now has three simple lifecycle methods:
+
+- `configure()` supplies the existing owner DAO without starting a query.
+- `activate()` verifies owner access and reloads the current search/range.
+- `deactivate()` remembers the selected record ID, cancels outstanding reads,
+  and clears table rows so an old background result cannot restore hidden data.
+
+Inventory keeps its entered and last-submitted search; Credit keeps its customer
+search and selection; Expiring Soon keeps its selected 7/14/30-day range and row.
+Fresh query results restore the selected record by ID and make it visible. A
+record removed or excluded by the filter is no longer selected. Cached controls
+are discarded at logout, so the next login begins with default view state.
+
+ProductDao now rechecks the owner session after reading query results, and the
+controllers check it again before displaying them. Both session identity and
+request identity are checked, so callbacks from canceled or superseded loads are
+ignored even when a screen is reopened quickly. Existing product SQL and credit
+transaction rules are unchanged.
+
+Navigation prepares a destination's layout before leaving the current screen.
+A missing layout therefore leaves the current screen usable and reports an
+error in the sidebar. An open modal must be completed or canceled before leaving.
+A submitted product deletion must finish before navigation or logout; it is not
+canceled midway. Actual data editing still uses the original modal dialogs.
+
+Guest Mode replaces the entire owner workspace with its own view. It does not
+receive the sidebar or cached owner screens, and existing service/DAO access
+checks remain in force. Exit Guest Mode returns to login as before.
+
+Run from the project root:
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+mvn verify
+python -u scripts/test_day5.py --navigation-checks
+mvn javafx:run
+```
+
+The existing isolated test launcher now accepts `--navigation-checks`. This mode
+writes `docs/testing/day6-task2-results.json` instead of replacing Day 5 results.
+An optional `--report` argument selects another project-local JSON report path.
+The same previously approved isolated fixtures are used; the configured database,
+its credentials/schema, the Day 5 JSON, and the Day 5 workbook are not modified.
+
+Final verification passed **74 ordinary unit checks, 16 isolated MySQL checks,
+and 26 JavaFX checks**. The four new navigation checks verified remembered searches,
+selections and ranges, committed changes appearing on return, leaving during loads
+without old rows reappearing, one main Stage, and fresh state after logout/login.
+The existing credit/payment, inventory CRUD, expiration, login, guest restriction,
+rollback, concurrency, and restart checks also passed. The temporary test server
+was removed. Normal `mvn verify` skips the 16 database checks; the launcher enables
+and runs them only on its verified temporary server.
+
+The initial UI run caught a null-selection error in the new Refresh code. An
+explicit nullable Integer now carries the restore ID instead of a conditional
+expression that unboxed null. The corrected rerun passed, including Refresh with
+no customer selected. The new JSON report retains the initial failure separately.
+
+Manual navigation checklist:
+
+1. Sign in and use the sidebar to visit every owner module, then Dashboard.
+   Confirm the current destination is marked and navigation uses one main window.
+2. Search Inventory and select a product. Leave for Credit, return, and check that
+   the search and selected product remain while its details are refreshed.
+3. Select a 30-day expiration range and a row. Visit another module and return.
+4. Search Credit and select a customer. Return from Dashboard and confirm that
+   their selection and history reload. Test existing utang/payment forms normally.
+5. Start Refresh and immediately switch modules. Confirm the destination remains
+   correct and no old data or unexpected dialog appears.
+6. Log out from a module. Enter Guest Mode and check its view-only tabs. Exit,
+   sign in again, and confirm searches/selections are cleared and the range is 7.
+
+Only Task 2 navigation work is included. Detailed visual consistency and resolution
+testing belong to Task 3, and the other review findings remain for their approved
+tasks. No unresolved failures remain in the executed Task 2 coverage.
 
 ## Day 2 integration verification
 
