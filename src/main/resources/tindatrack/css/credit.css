@@ -23,6 +23,12 @@
     -fx-font-size: 12px;
 }
 
+.credit-root .combo-box,
+.login-card .combo-box,
+.login-card .date-picker {
+    -fx-pref-height: 36px;
+}
+
 .credit-payment-button {
     -fx-background-color: #e6f1ea;
     -fx-text-fill: #203d2e;

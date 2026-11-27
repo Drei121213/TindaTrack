@@ -21,9 +21,9 @@
         <TextField fx:id="searchField" promptText="Search by customer name"
                    accessibleText="Customer name" onAction="#loadCustomers" HBox.hgrow="ALWAYS" />
         <Button fx:id="searchButton" text="Search" onAction="#loadCustomers" styleClass="guest-button" />
-        <Button fx:id="recordUtangButton" text="+ Record Utang" disable="true" styleClass="login-button" />
+        <Button fx:id="recordUtangButton" text="+ Record Utang" onAction="#handleRecordUtang" styleClass="login-button" />
     </HBox>
-    <Label text="Viewing only for now. Record Utang and Record Payment will be enabled in later tasks."
+    <Label text="Select a customer to view history or record utang. Record Payment will be enabled in Task 3."
            wrapText="true" styleClass="credit-status" />
     <SplitPane orientation="VERTICAL" dividerPositions="0.52" VBox.vgrow="ALWAYS" minHeight="200">
         <TableView fx:id="customersTable" editable="false" minHeight="90" styleClass="credit-table">

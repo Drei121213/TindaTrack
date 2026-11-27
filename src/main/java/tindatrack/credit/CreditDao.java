@@ -1,11 +1,14 @@
 package tindatrack.credit;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -14,7 +17,7 @@ import tindatrack.authentication.OwnerSession;
 import tindatrack.core.DatabaseConnection;
 import tindatrack.core.SessionState;
 
-/** Reads customer balances and history for the currently signed-in owner. */
+/** Reads credit data and saves utang for the currently signed-in owner. */
 public final class CreditDao {
 
     private final SessionState sessions;
@@ -28,6 +31,114 @@ public final class CreditDao {
     /** Also used before displaying results returned by a background task. */
     public void requireOwnerAccess() {
         sessions.requireActive(owner);
+    }
+
+    /**
+     * Inserts the purchase and updates the balance in one transaction. New names
+     * are resolved under an application name lock because the RTM has no UNIQUE
+     * customer-name constraint. Selecting an existing ID avoids name ambiguity.
+     */
+    int recordUtang(UtangRequest request) throws IOException, SQLException {
+        requireOwnerAccess();
+        UtangRequest validated = CreditRules.validate(request);
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            if (validated.customerId() == null) {
+                lockCustomerNames(connection);
+            }
+            connection.setAutoCommit(false);
+            try {
+                requireOwnerAccess();
+                LockedCustomer customer = findOrCreateCustomer(connection, validated);
+                BigDecimal updatedBalance = CreditRules.addUtang(customer.balance(), validated.amount());
+                LocalDateTime transactionDate = validated.date().atTime(LocalTime.now().withNano(0));
+                String insertSql = """
+                        INSERT INTO credit_transactions (customer_id, items, amount, transaction_date)
+                        VALUES (?, ?, ?, ?)
+                        """;
+                requireOwnerAccess();
+                try (PreparedStatement insert = connection.prepareStatement(insertSql)) {
+                    insert.setInt(1, customer.id());
+                    insert.setString(2, validated.items());
+                    insert.setBigDecimal(3, validated.amount());
+                    insert.setObject(4, transactionDate);
+                    insert.executeUpdate();
+                }
+                try (PreparedStatement update = connection.prepareStatement(
+                        "UPDATE customers SET balance = ? WHERE customer_id = ?")) {
+                    update.setBigDecimal(1, updatedBalance);
+                    update.setInt(2, customer.id());
+                    if (update.executeUpdate() != 1) {
+                        throw new SQLException("The customer balance could not be updated.");
+                    }
+                }
+                requireOwnerAccess();
+                connection.commit();
+                return customer.id();
+            } catch (SQLException | RuntimeException exception) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackFailure) {
+                    exception.addSuppressed(rollbackFailure);
+                }
+                throw exception;
+            }
+        }
+    }
+
+    private LockedCustomer findOrCreateCustomer(Connection connection, UtangRequest request)
+            throws SQLException {
+        boolean byId = request.customerId() != null;
+        String sql = byId
+                ? "SELECT customer_id, balance FROM customers WHERE customer_id = ? FOR UPDATE"
+                : "SELECT customer_id, balance FROM customers WHERE name = ? ORDER BY customer_id FOR UPDATE";
+        try (PreparedStatement select = connection.prepareStatement(sql)) {
+            if (byId) {
+                select.setInt(1, request.customerId());
+            } else {
+                select.setString(1, request.customerName());
+            }
+            try (ResultSet rows = select.executeQuery()) {
+                if (rows.next()) {
+                    LockedCustomer customer = new LockedCustomer(rows.getInt("customer_id"), rows.getBigDecimal("balance"));
+                    if (rows.next()) {
+                        throw new CreditRules.ValidationException("customer",
+                                "Several customers have this name. Select the customer from the list.");
+                    }
+                    return customer;
+                }
+            }
+        }
+        if (byId) {
+            throw new CreditRules.ValidationException("customer",
+                    "This customer was removed. Cancel and refresh the credit list.");
+        }
+        requireOwnerAccess();
+        try (PreparedStatement insert = connection.prepareStatement(
+                "INSERT INTO customers (name, balance) VALUES (?, 0.00)", Statement.RETURN_GENERATED_KEYS)) {
+            insert.setString(1, request.customerName());
+            insert.executeUpdate();
+            try (ResultSet keys = insert.getGeneratedKeys()) {
+                if (!keys.next()) {
+                    throw new SQLException("The new customer's ID was not returned.");
+                }
+                return new LockedCustomer(keys.getInt(1), new BigDecimal("0.00"));
+            }
+        }
+    }
+
+    private void lockCustomerNames(Connection connection) throws SQLException {
+        // The connection closes after commit/rollback, releasing this MySQL lock.
+        try (PreparedStatement statement = connection.prepareStatement("SELECT GET_LOCK(?, 3)")) {
+            statement.setString(1, "tindatrack.customer-names");
+            try (ResultSet rows = statement.executeQuery()) {
+                if (!rows.next() || rows.getInt(1) != 1) {
+                    throw new SQLException("Could not acquire the customer name lock.");
+                }
+            }
+        }
+    }
+
+    private record LockedCustomer(int id, BigDecimal balance) {
     }
 
     /**

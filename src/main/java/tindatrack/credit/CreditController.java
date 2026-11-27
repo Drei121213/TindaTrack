@@ -1,5 +1,6 @@
 package tindatrack.credit;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -11,15 +12,19 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import tindatrack.core.SessionState.AccessDeniedException;
 
-/** Displays owner credit information; this first task performs no writes. */
+/** Displays owner credit information and opens the Record Utang form. */
 public final class CreditController {
 
     private static final DateTimeFormatter DATE_FORMAT =
@@ -38,6 +43,7 @@ public final class CreditController {
     @FXML private TextField searchField;
     @FXML private Button searchButton;
     @FXML private Button refreshButton;
+    @FXML private Button recordUtangButton;
     @FXML private Label customerPlaceholder;
     @FXML private Label historyPlaceholder;
     @FXML private Label historyTitle;
@@ -103,9 +109,46 @@ public final class CreditController {
         onBack.run();
     }
 
+    @FXML
+    private void handleRecordUtang() {
+        try {
+            credits.requireOwnerAccess();
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/tindatrack/fxml/record-utang.fxml"));
+            Scene scene = new Scene(loader.load(), 520, 620);
+            scene.getStylesheets().addAll(customersTable.getScene().getStylesheets());
+            RecordUtangController form = loader.getController();
+            form.configure(new CreditService(credits), customersTable.getSelectionModel().getSelectedItem());
+            Stage dialog = new Stage();
+            dialog.initOwner(customersTable.getScene().getWindow());
+            dialog.initModality(Modality.WINDOW_MODAL);
+            dialog.setTitle("TindaTrack - Record Utang");
+            dialog.setScene(scene);
+            dialog.setMinWidth(420);
+            dialog.setMinHeight(460);
+            dialog.setOnCloseRequest(event -> {
+                if (form.isSaving()) {
+                    event.consume();
+                }
+            });
+            dialog.showAndWait();
+            if (form.savedCustomerId() != null) {
+                searchField.clear();
+                loadCustomers("Utang saved.", form.savedCustomerId());
+            }
+        } catch (IOException exception) {
+            statusLabel.setText("Could not open Record Utang. Please try again.");
+        } catch (AccessDeniedException denied) {
+            showAccessDenied(denied);
+        }
+    }
+
     /** Search and Refresh both reload the currently entered name fragment. */
     @FXML
     private void loadCustomers() {
+        loadCustomers("", null);
+    }
+
+    private void loadCustomers(String successMessage, Integer selectCustomerId) {
         if (credits == null) {
             return;
         }
@@ -115,7 +158,8 @@ public final class CreditController {
         clearHistory();
         setLoading(true);
         customerPlaceholder.setText("Loading customers...");
-        statusLabel.setText("Loading customer balances...");
+        statusLabel.setText(successMessage.isEmpty() ? "Loading customer balances..."
+                : successMessage + " Refreshing balances...");
 
         Task<List<Customer>> load = new Task<>() {
             @Override
@@ -134,8 +178,13 @@ public final class CreditController {
                 customers.setAll(load.getValue());
                 customerPlaceholder.setText(search.isEmpty()
                         ? "No customers recorded yet." : "No customers found.");
-                statusLabel.setText(customers.size() + " customer(s). Select a customer to view history.");
+                statusLabel.setText((successMessage.isEmpty() ? "" : successMessage + " ")
+                        + customers.size() + " customer(s). Select a customer to view history.");
                 setLoading(false);
+                if (selectCustomerId != null) {
+                    customers.stream().filter(c -> c.id() == selectCustomerId)
+                            .findFirst().ifPresent(customersTable.getSelectionModel()::select);
+                }
             } catch (AccessDeniedException denied) {
                 showAccessDenied(denied);
             }
@@ -149,7 +198,8 @@ public final class CreditController {
                 showAccessDenied(denied);
             } else {
                 customerPlaceholder.setText("Cannot load customers. Please try again.");
-                statusLabel.setText("Could not load customer balances. Select Refresh to retry.");
+                statusLabel.setText((successMessage.isEmpty() ? "" : successMessage + " ")
+                        + "Could not load customer balances. Select Refresh to retry.");
                 setLoading(false);
             }
         });
@@ -218,6 +268,7 @@ public final class CreditController {
         searchField.setDisable(loading);
         searchButton.setDisable(loading);
         refreshButton.setDisable(loading);
+        recordUtangButton.setDisable(loading);
     }
 
     private void cancelHistory() {

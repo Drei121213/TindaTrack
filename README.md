@@ -757,8 +757,9 @@ The application loads `credit.fxml` with `FXMLLoader`, obtains its separate
 The same owner session is retained while moving between Home and Credit.
 `credit.css` supplements the existing shared login stylesheet.
 
-This task only reads existing records. **+ Record Utang** and each customer's
-**Record Payment** button are disabled until Tasks 2 and 3. Guest Mode continues
+At the end of Task 1, this screen only read existing records and both recording
+buttons were disabled. Task 2 below now enables **+ Record Utang**; **Record
+Payment** remains disabled. Guest Mode continues
 to use its existing separate read-only customer-name/balance view.
 
 From the project root, use Java 21 and run:
@@ -790,7 +791,8 @@ Manual checklist:
    decimals, and customers without history show the appropriate message.
 5. Select different customers quickly and refresh. Confirm the history belongs
    to the current selection and that Refresh keeps the current search filter.
-6. Confirm the utang and payment buttons are disabled and cannot save anything.
+6. For the current Task 2 version, test utang using the checklist below. Confirm
+   that payment buttons remain disabled.
 7. Log out and enter Guest Mode. Confirm its credit tab remains view-only and
    has no owner recording controls.
 8. If a database connection is unavailable, expect a clear loading error. After
@@ -805,11 +807,121 @@ owner identities before database access. A rendered view was checked at the
 normal 640 x 560 scene size. The Maven JavaFX run command also reached application
 startup without a reported launch error and was then stopped.
 
-The configured MySQL endpoint refused the connection during verification.
-Therefore actual customer loading, search results from stored rows, transaction
-history, latest-date calculation, and successful recovery after reconnecting are
-**not yet verified**. No database records or schema were changed and no seed data
-was imported. SID-08 and SID-09 saving cases remain pending for later tasks.
+During Task 1, the configured MySQL endpoint refused the connection. Actual
+customer loading, search results from stored rows, transaction history, latest-date
+calculation, and successful recovery after reconnecting were not verified then.
+Task 2's read-only connection check now succeeds; see its verification notes below.
+No database records or schema were changed during Task 1 and no seed data was imported.
+
+## Day 5, Task 2: Record Utang
+
+From owner **Credit Management**, select **+ Record Utang**. Choose an existing
+customer, or select **New customer** and type their name. Existing choices show
+the customer ID to distinguish records with identical names. If a typed name
+already matches a single stored customer under MySQL's name comparison, the save
+uses that customer instead of creating another record. If multiple records match,
+the form asks you to select the intended customer from the existing-customer list.
+
+Enter the amount and optionally describe the purchased items as plain text.
+SB08 marks customer and amount as required. The date defaults to today; use the
+calendar to choose an earlier date when needed. The calendar is not directly
+editable, which avoids invalid typed dates. Save accepts valid dates within
+MySQL's year range of 1000 through 9999.
+
+Amounts must be greater than zero, have at most two decimal places, and fit
+DECIMAL(10,2). Exponents, currency symbols, thousands separators, and extra decimal
+places are rejected rather than rounded. Customer names are limited to 100
+characters and the items description must fit the existing UTF-8 TEXT column.
+The resulting balance must also fit DECIMAL(10,2).
+
+The code responsibilities are:
+
+- `UtangRequest` carries the selected customer ID (or a new name), items, amount,
+  and selected date.
+- `CreditRules` validates input and calculates the new balance using BigDecimal.
+- `CreditService` checks owner access and revalidates requests before saving.
+- `RecordUtangController` loads customers, shows field errors, and runs the save
+  on a background JavaFX Task. While saving, fields, Save, Cancel, and window
+  closing are disabled. Repeated Save events are ignored.
+- `CreditDao.recordUtang()` performs the database transaction with prepared SQL.
+
+The DAO calls `setAutoCommit(false)` so its changes are held together until
+`commit()`. It reads the customer using SELECT FOR UPDATE, which locks that row
+until the transaction finishes. The calculation uses this current balance, not
+the potentially older value displayed on screen. For a new name, it resolves or
+creates the customer inside the same transaction, starting at zero. A MySQL
+application name lock serializes name-based creation without changing the schema.
+
+It then inserts the credit purchase and updates the customer's balance.
+`commit()` makes both changes permanent together. If validation, a database
+operation, or an owner-session check fails, `rollback()` undoes the transaction,
+including a newly created customer. Connections, statements, and result sets
+close with try-with-resources. Inventory quantities are never changed.
+
+For example, an existing balance of **250.00** plus an utang of **30.00** becomes
+**280.00**. A new customer with a **45.00** purchase is created with a final balance
+of **45.00**. Successful saving closes the form, clears the name filter, reloads
+the list, selects the saved customer, and loads their history. If refreshing fails
+after a successful commit, the message still says **Utang saved.** so a refresh
+failure is not confused with a failed save.
+
+Run from the project root with Java 21:
+
+```powershell
+mvn test
+mvn verify
+mvn compile exec:exec
+mvn javafx:run
+```
+
+The first two commands run the validation, calculation, and permission tests;
+verify also packages the application. The connection check only runs SELECT 1.
+Use the Java 21 environment commands in the Task 1 section if needed.
+
+Manual SID-08 checklist (use approved test records):
+
+1. **RecordUtang_SunnyDay:** Select a customer with balance 250.00, enter
+   `2 Pancit Canton` and `30.00`, and save. Expect balance 280.00, one new history
+   entry, and **Utang saved.** Do not change real balances merely to match this
+   example; otherwise calculate the expected result from the existing balance.
+2. **RecordUtang_NewCustomer:** Choose New customer, enter an approved new name,
+   items, and `45.00`. Save and confirm one customer and one credit purchase.
+3. **RecordUtang_EmptyFields / InvalidAmount:** Leave the name/selection or amount
+   blank, then try `0`, `-10`, `abc`, and `1.001`. Expect field errors and no save.
+4. **RecordUtang_Cancel:** Fill valid fields and cancel or close the form before
+   saving. Confirm no new customer, purchase, or balance change.
+5. **RecordUtang_DatabaseError:** In a dedicated test setup, make the connection
+   unavailable after the form has loaded and select Save. Expect
+   **Utang was not saved. Please try again.** and an open form. Restore the test
+   connection before retrying. Do not interrupt a production database for a test.
+6. **RecordUtang_SavedImmediately:** Complete a save, close the application, reopen
+   it, and verify the same balance and transaction are still present.
+7. Select an earlier date and verify that the history uses that date. Check that
+   inventory stock is unchanged, Record Payment is disabled, and Guest Mode has
+   no recording controls.
+
+The Java 21 build passed 45 JUnit checks: 30 for credit rules/permissions and 15
+existing expiration checks. Credit tests include the 250.00 + 30.00 calculation,
+decimal accuracy, invalid input, column limits, balance overflow, and rejection
+of guest, signed-out, recreated, and ended owner sessions before database access.
+These tests do not insert database records.
+
+A temporary JavaFX check loaded all nine current FXML layouts and exercised the
+Record Utang form. The executed checks covered loading the empty customer list,
+automatically choosing New customer, today's default date, customer/amount/date
+validation, canceling a filled form, and disabled controls while saving. A save
+attempt used an unreachable endpoint in a temporary, ignored configuration copy
+to verify the exact database-error message and that the form stayed open. The
+original credential file was not changed. Customer, credit-transaction, and payment
+counts were identical before and after these checks. The form was also visually
+checked at 520 x 620. Temporary harness and credential-copy files were removed.
+
+The read-only connection check succeeded during Task 2. The configured database
+has no customers, so populated customer/history verification and successful saving
+remain manual checks. No seed data or production test records were created.
+Actual commit, rollback after a partial write, concurrent saves, and persistence
+after restarting have not yet been verified against MySQL. Full B4 workbook
+results will be recorded in the separately approved testing task.
 
 ## Day 2 integration verification
 
