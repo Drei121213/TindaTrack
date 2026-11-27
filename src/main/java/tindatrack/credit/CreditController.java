@@ -229,6 +229,9 @@ public final class CreditController {
         if (form.savedBalance() != null) {
             searchField.clear();
             loadCustomers("Payment saved. Remaining balance: ₱" + form.savedBalance().toPlainString(), customer.id());
+        } else {
+            // Another payment may have changed the balance while this form was open.
+            loadCustomers("", customer.id());
         }
     }
 

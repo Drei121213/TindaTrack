@@ -1,6 +1,7 @@
 package tindatrack.guest;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -38,6 +39,8 @@ public final class GuestController {
 
     private GuestService service;
     private Runnable onExit;
+    private final List<Task<?>> activeLoads = new ArrayList<>();
+    private boolean closed;
 
     @FXML
     private void initialize() {
@@ -57,6 +60,7 @@ public final class GuestController {
     }
 
     public void configure(GuestService service, Runnable onExit) {
+        service.requireGuestAccess();
         this.service = service;
         this.onExit = onExit;
         searchProducts();
@@ -75,7 +79,13 @@ public final class GuestController {
 
     private <T> void loadRows(TableView<T> table, Button action,
                               Callable<List<T>> query, String emptyMessage) {
-        if (action.isDisabled()) {
+        if (closed || action.isDisabled()) {
+            return;
+        }
+        try {
+            service.requireGuestAccess();
+        } catch (AccessDeniedException denied) {
+            showAccessDenied(denied);
             return;
         }
         action.setDisable(true);
@@ -88,18 +98,39 @@ public final class GuestController {
                 return query.call();
             }
         };
+        activeLoads.add(load);
         load.setOnSucceeded(event -> {
-            table.getItems().setAll(load.getValue());
-            table.setPlaceholder(new Label(emptyMessage));
-            action.setDisable(false);
+            if (closed || !activeLoads.remove(load)) {
+                return;
+            }
+            try {
+                service.requireGuestAccess();
+                table.getItems().setAll(load.getValue());
+                table.setPlaceholder(new Label(emptyMessage));
+                action.setDisable(false);
+            } catch (AccessDeniedException denied) {
+                showAccessDenied(denied);
+            }
         });
         load.setOnFailed(event -> {
+            if (closed || !activeLoads.remove(load)) {
+                return;
+            }
+            try {
+                service.requireGuestAccess();
+            } catch (AccessDeniedException denied) {
+                showAccessDenied(denied);
+                return;
+            }
             Throwable failure = load.getException();
-            String message = failure instanceof AccessDeniedException denied
-                    ? denied.getMessage() : "Cannot load the data. Please try again.";
-            table.setPlaceholder(new Label(message));
-            action.setDisable(false);
+            if (failure instanceof AccessDeniedException denied) {
+                showAccessDenied(denied);
+            } else {
+                table.setPlaceholder(new Label("Cannot load the data. Please try again."));
+                action.setDisable(false);
+            }
         });
+        load.setOnCancelled(event -> activeLoads.remove(load));
 
         Thread worker = new Thread(load, "tindatrack-guest-query");
         worker.setDaemon(true);
@@ -108,6 +139,37 @@ public final class GuestController {
 
     @FXML
     private void handleExitGuest() {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        cancelLoads();
+        clearTables();
         onExit.run();
+    }
+
+    private void showAccessDenied(AccessDeniedException denied) {
+        cancelLoads();
+        clearTables();
+        guestTabs.setDisable(true);
+        productsTable.setPlaceholder(new Label(denied.getMessage()));
+        balancesTable.setPlaceholder(new Label(denied.getMessage()));
+    }
+
+    private void clearTables() {
+        productsTable.getItems().clear();
+        balancesTable.getItems().clear();
+        searchField.setDisable(true);
+        searchButton.setDisable(true);
+        refreshCreditButton.setDisable(true);
+    }
+
+    private void cancelLoads() {
+        // Clear the list first so callbacks from obsolete requests are ignored.
+        List<Task<?>> pending = List.copyOf(activeLoads);
+        activeLoads.clear();
+        for (Task<?> task : pending) {
+            task.cancel();
+        }
     }
 }

@@ -15,6 +15,8 @@
         <maven.compiler.release>21</maven.compiler.release>
         <javafx.version>21.0.12</javafx.version>
         <mysql.connector.version>9.7.0</mysql.connector.version>
+        <!-- The isolated test launcher overrides this; normal tests stay here. -->
+        <tindatrack.test.workingDirectory>${project.basedir}</tindatrack.test.workingDirectory>
     </properties>
 
     <dependencies>
@@ -43,6 +45,14 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+                <configuration>
+                    <workingDirectory>${tindatrack.test.workingDirectory}</workingDirectory>
+                </configuration>
+            </plugin>
             <!-- Run the database check in its own Java process. -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

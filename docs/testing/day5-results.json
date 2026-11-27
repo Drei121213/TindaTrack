@@ -1,0 +1,276 @@
+{
+  "executedAt": "2026-11-27T23:21:36.293020+08:00",
+  "environment": "Java 21 / JavaFX / disposable MySQL 8 inside project target",
+  "productionDatabaseTouched": false,
+  "seedApproval": "User approved isolated test data for Day 5 Task 5.",
+  "ui": [
+    {
+      "id": "Login_WrongPassword",
+      "status": "Pass",
+      "actual": "Existing test owner rejected wrongpass and remained on login.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Login_SunnyDay",
+      "status": "Pass",
+      "actual": "maggie/store123 opened the signed-in owner Home, then Credit Management.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_SunnyDay",
+      "status": "Pass",
+      "actual": "Recorded 2 Pancit Canton for 30.00; list refreshed to 280.00, history saved, stock stayed 40, and repeat Save was disabled.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_NewCustomer",
+      "status": "Pass",
+      "actual": "The New customer choice created one Aling Rosa with balance 45.00 and one Sardines purchase.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_EmptyFields",
+      "status": "Pass",
+      "actual": "Blank name and blank amount showed field errors; no purchase or customer was inserted.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_InvalidAmount",
+      "status": "Pass",
+      "actual": "0, -10, abc and 1.001 showed Please enter a valid amount.; nothing was saved.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_Cancel",
+      "status": "Pass",
+      "actual": "Filled a 30.00 purchase and canceled; the form closed, balance stayed 250.00 and history did not change.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable temporary endpoint produced Utang was not saved. Please try again.; form stayed open and balance stayed 250.00.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_PartialPayment",
+      "status": "Pass",
+      "actual": "Paid 50.00 from 250.00; the list refreshed to 200.00 with a separate payment and success message.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_FullPayment",
+      "status": "Pass",
+      "actual": "Paid 250.00; the stored and displayed balance became 0.00.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_NoBalance",
+      "status": "Pass",
+      "actual": "Kuya Jun at 0.00 showed This customer has no balance. without opening the payment form.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_EmptyOrZero",
+      "status": "Pass",
+      "actual": "Blank, zero, negative and nonnumeric payments showed the expected error without saving.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_MoreThanBalance",
+      "status": "Pass",
+      "actual": "300.00 against 250.00 showed Payment cannot be more than the balance.; no payment was saved.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_Cancel",
+      "status": "Pass",
+      "actual": "Canceled a filled 50.00 payment; the form closed, balance stayed 250.00 and payment count stayed unchanged.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable temporary endpoint produced Payment was not saved. Please try again.; form stayed open and balance stayed 250.00.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_TwoDecimals",
+      "status": "Pass",
+      "actual": "49.50 reduced 250.00 to 200.50; the displayed balance retained two decimals and the next 300.00 was rejected.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day5_StalePaymentForm",
+      "status": "Pass",
+      "actual": "Another connection paid 100.00 while a 200.00 form was open; save rejected against 150.00 and refreshed the form balance.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day5_InventoryExpirationRegression",
+      "status": "Pass",
+      "actual": "Owner inventory add, search, edit and confirmed delete worked; Expiring Soon listed the expired fixture and navigation preserved the session.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "GuestMode_CreditTab",
+      "status": "Pass",
+      "actual": "Guest Credit tab showed the same committed customer names/balances as the owner, using only the two permitted columns.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "GuestMode_NoOwnerFunctions",
+      "status": "Pass",
+      "actual": "Guest UI had no owner controls; owner credit route and both write services rejected guest access; exit cleared pending rows.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_SavedImmediately",
+      "status": "Pass",
+      "actual": "A separate JVM relaunched, signed in, and displayed Aling Nena at 280.00 with the saved 30.00 utang.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day5_PaymentRestart",
+      "status": "Pass",
+      "actual": "A separate JVM displayed Aling Rosa at 40.00 with both her 45.00 purchase and 5.00 payment preserved.",
+      "method": "Automated JavaFX / isolated MySQL"
+    }
+  ],
+  "database": [
+    {
+      "id": "removedCustomerAndBalanceOverflowCannotSave",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "failedNewCustomerUtangRollsBackTheCustomerAsWell",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "existingUtangIncreasesOnlyTheCorrectBalanceAndPreservesStock",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "simultaneousUtangDoesNotLoseEitherBalanceIncrease",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "fullPaymentEndsAtZeroAndRejectsFurtherPayment",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "decimalPaymentKeepsExactMoneyAndRejectsNextOverpayment",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "earlierDatesAndLatestTransactionIncludeBothHistoryTypes",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "utangRollsBackAfterThePurchaseInsertIfBalanceUpdateFails",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "overpaymentAndInvalidRequestsLeaveStoredDataUnchanged",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "guestSeesCommittedBalancesButCannotSaveAnything",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "simultaneousNewNameCreatesOneCustomerWithBothPurchases",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "typedExistingNameReusesTheCustomer",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "simultaneousPaymentsCannotOverdrawTheCustomer",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "partialPaymentSavesASeparateRecordAndPreservesUtang",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "newCustomerAndPurchaseAreSavedTogether",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "paymentRollsBackAfterThePaymentInsertIfBalanceUpdateFails",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    }
+  ],
+  "unit": [
+    {
+      "suite": "tindatrack.credit.CreditRulesTest",
+      "tests": 30,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tindatrack.credit.PaymentRulesTest",
+      "tests": 25,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tindatrack.guest.GuestPermissionsTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tindatrack.inventory.ExpirationDatesTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "previousFailures": [
+    {
+      "id": "Day5_StalePaymentForm",
+      "status": "Failed",
+      "actual": "java.lang.AssertionError: Displayed balance differs for Aling Nena",
+      "method": "Automated JavaFX / isolated MySQL"
+    }
+  ]
+}

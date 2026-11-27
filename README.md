@@ -1035,6 +1035,194 @@ the agent. No seed data or database test records were created. JUnit calculation
 do not establish database concurrency or rollback behavior. B4 workbook result
 recording remains reserved for the separately approved testing task.
 
+## Day 5, Task 4: Owner and guest integration
+
+Owner Home already includes **Credit Management**. The credit screen opens the
+Record Utang and per-customer Record Payment dialogs, and **Back to Home** returns
+to the owner dashboard. These routes retain the same OwnerSession. Navigation
+checks that it is still the active session. Inventory and Expiring Soon remain
+available through Home and their existing navigation buttons.
+
+Successful utang and payment saves already reload customer balances, select the
+affected customer, and load their history after commit. Reopening Credit also
+queries the database again. These connections were implemented in Tasks 1-3 and
+were reused for Task 4 rather than replaced.
+
+Guest Mode already provides the SID-10/UC10 balance view: choose **Continue as
+Guest (View Only)** on login, then open **Credit (Utang)**. Guests see only customer
+names and outstanding balances. The tab reloads when opened, and **Refresh
+balances** reads the current values again. If an owner changes a balance in a
+different application instance while this tab stays open, use Refresh balances
+to see that committed change; there is no automatic cross-instance notification.
+
+Owner and guest screens read the same `customers.name` and `customers.balance`
+columns through the existing DatabaseConnection utility. Owner saves update that
+balance in the same transaction as the utang or payment record. GuestService
+only exposes prepared SELECT queries returning the permitted columns; it has no
+customer-creation, utang-saving, or payment-saving operations. It does not return
+passwords, user-account details, or transaction history. GuestController keeps
+both tables non-editable and provides no owner recording controls.
+
+The restrictions also apply beneath the interface: CreditService and CreditDao
+require the exact active OwnerSession, while GuestService requires the exact active
+GuestSession. Hiding a button is not the authorization check. Logout/guest exit
+ends that session, so its old service/DAO objects fail subsequent access checks.
+
+Task 4 updates GuestService to recheck access after a query completes, and exposes
+`requireGuestAccess()` for the controller to check before displaying results.
+GuestController now tracks its active Tasks. On Exit Guest Mode it cancels those
+requests and clears both tables; callbacks from obsolete requests are ignored.
+An expired session also clears both tables and disables further tab access while
+leaving Exit Guest Mode available. This prevents a completed background query
+from putting data back into a view that has already been exited.
+
+From the project root with Java 21 selected, run:
+
+```powershell
+mvn verify
+mvn compile exec:exec
+mvn javafx:run
+```
+
+Manual integration checklist:
+
+1. Sign in as the owner. Open Credit Management, return Home, then visit Inventory
+   and Expiring Soon. Return to Credit and confirm the owner stays signed in.
+2. Open each recording dialog and cancel. Confirm it returns to Credit without
+   changing data. With approved test records, save an utang and then a payment;
+   check the refreshed balance, success message, selection, and history each time.
+3. Log out and continue as a guest without entering credentials. Open Credit
+   (Utang) and compare its names/balances with the owner's committed values.
+4. Confirm guests have no customer-creation, utang, payment, edit, or delete
+   controls and that the guest tables cannot be edited.
+5. If using a second application instance to record an approved transaction,
+   select Refresh balances in the guest instance and compare the updated amount.
+6. Start a guest refresh and immediately exit. Confirm login returns and reopening
+   Guest Mode creates a fresh visit with current data.
+7. Check ordinary login/logout, inventory searching, and Expiring Soon navigation.
+
+Verification performed for Task 4:
+
+- Java 21 offline Maven verify passed **74 JUnit tests**, including four new guest
+  permission checks. All existing credit, payment, and expiration checks passed.
+- A temporary JavaFX integration check verified invalid login feedback and password
+  clearing, then used a test owner session to exercise the real navigation callbacks.
+  Successful credential-based owner login remains a manual check.
+- Home/Credit/Inventory/Expiring navigation retained the owner's exact session.
+  Both recording dialogs opened from Credit and returned there on Cancel.
+- The guest Credit tab loaded existing customer names and balances equal to the
+  owner query, with two decimal places and only two permitted credit columns.
+  Owner controls were absent. The owner credit route and both write services
+  rejected operations while a guest session was active.
+- Exit during refresh cleared guest data, which stayed empty after the pending
+  request. Reentry created a new guest identity and rejected the old service.
+  Explicitly invalidating a displayed guest session also cleared its data and
+  disabled its tabs, with Exit still returning to login.
+- Database row counts for users, products, customers, credit transactions, and
+  payments were unchanged. Temporary integration-check files were removed.
+
+These checks did not save purchases or payments, generate seed data, or modify
+credentials or the schema. Post-save refresh with an actual committed transaction,
+cross-instance refresh after an owner save, and database transaction/concurrency
+checks were deferred to the later testing task. The Task 5 results below complete
+these previously pending checks using separately approved isolated test data.
+
+## Day 5, Task 5: Executed tests and bug fix
+
+The user approved generating isolated test records for this task. Testing used a
+separate temporary MySQL Server 8 instance under the ignored `target` directory.
+It never used the configured application database for write tests, changed its
+credentials or schema, or imported `B4_seed_data.sql`. The temporary server and
+its randomly generated database credentials were removed after the run.
+
+All **74 ordinary JUnit tests, 16 real MySQL tests, and 22 JavaFX acceptance
+checks passed** in the final run. These include all seven SID-08 and all eight
+SID-09 B4 cases. Additional checks cover guest restrictions, actual owner login,
+inventory add/search/edit/delete, expiration navigation, stale form handling,
+and payment persistence across separate JVM launches.
+
+The database checks verified rollback after the credit/payment INSERT had already
+succeeded but the balance UPDATE failed. A test-only trigger on the isolated
+server injected the failure; the trigger was removed afterward. Both history and
+balance stayed unchanged, and a failed new-customer purchase left no customer row.
+Concurrent real connections verified that two 150.00 payments against 250.00
+cannot both succeed, simultaneous utang increments are both retained, and two
+new-name purchases create one customer with the combined balance.
+
+One bug was found and corrected. If another payment reduced a customer's balance
+while their payment form was open, the save correctly rejected the overpayment
+and updated the form. Canceling then left the credit list showing its older value.
+`CreditController.openPaymentForm()` now reloads the customer list after the
+dialog closes without saving as well. The repeat test verified the stored,
+form, and returned-list balance at 150.00. The first failure and corrected rerun
+are both documented in the results.
+
+Reusable test files:
+
+- `src/test/java/tindatrack/credit/CreditDatabaseTest.java`: 16 JUnit checks against
+  actual MySQL transactions, rollback, concurrency, dates, balances and permissions.
+- `src/test/java/tindatrack/credit/Day5UiCheck.java`: drives the real FXML controls
+  to execute the B4 flows, including saving, canceling, error messages, refreshes,
+  regression checks and reopening the application in a separate JVM.
+- `src/test/java/tindatrack/testing/IsolatedDatabase.java`: verifies the server's
+  actual data directory before permitting fixture changes. It refuses a server
+  whose directory does not match the launcher's project-local temporary directory.
+- `scripts/test_day5.py`: creates the temporary server, runs the ordinary tests,
+  runs the opt-in database tests, launches JavaFX twice, records results, and shuts
+  down/removes only that temporary server.
+
+`pom.xml` configures Surefire's working directory through a project property.
+Normal tests use the project root. The launcher overrides it to the temporary
+credential directory; database tests are skipped unless the isolated-test flag
+is enabled, and their directory check must still pass before fixture writes.
+
+Results are in `docs/testing/day5-results.json` and
+`outputs/day5-2026-11-27/B4_Test_Cases_Day5_Results.xlsx`. The workbook is a separate
+copy of the existing `B4_Test_Cases_PR6_Updated.xlsx`; the source was not modified.
+All original expected results, formulas, and unrelated cell values were preserved.
+Nineteen executed B4 rows were updated (15 credit/payment and four login/guest),
+and the **Day 5 Checks** sheet records additional checks and the resolved bug.
+Unchanged B4 rows retain historical results and do not imply execution in this run.
+
+The database-error UI cases used an unreachable temporary endpoint after opening
+the form, rather than stopping a live MySQL service. The expected error and
+unchanged balance were verified; separate trigger tests verified mid-write rollback.
+
+From the project root with Python 3, Java 21, Maven, and MySQL Server 8 installed:
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+mvn verify
+python -u scripts/test_day5.py
+mvn javafx:run
+```
+
+`mvn verify` runs 74 ordinary checks and skips the 16 opt-in database checks.
+The Python launcher executes those 16 checks on its own server and overwrites
+the JSON execution report with the latest run; it does not regenerate the Excel
+copy. It uses cached Maven dependencies, so run `mvn verify` online once if the
+cache is missing. The launcher requires an installed MySQL server binary, but
+does not require changing or stopping your normal MySQL service. If MySQL is
+installed elsewhere, set `TINDATRACK_MYSQL_BIN` to its `bin` directory first.
+
+Manual checks for the owner:
+
+1. With approved test records, record an utang, then partial and full payments.
+   Check the refreshed balances, success messages, and history.
+2. Try an overpayment, invalid amounts, and Cancel; confirm no unwanted changes.
+3. Reopen the app and compare saved purchases, payments and remaining balances.
+4. Use two app instances on a test database: open a payment form, pay from the
+   other instance, then attempt an excessive payment in the first. After the
+   rejection, cancel and check that the credit list shows the updated balance.
+5. Enter Guest Mode, compare balances, and verify there are no recording controls.
+   Check keyboard navigation, calendar selection and ordinary window resizing.
+
+The automated checks establish the recorded outcomes in the isolated environment.
+Keyboard-only interaction and visual use on your own display remain manual checks.
+No application failures remain unresolved in this run. The broader B4 cases outside
+the recorded coverage were not all rerun for Day 5.
+
 ## Day 2 integration verification
 
 With Java 21 selected and MySQL running, use these commands from the project root.

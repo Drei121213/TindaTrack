@@ -29,6 +29,11 @@ public final class GuestService {
         this.guest = guest;
     }
 
+    /** Checks the exact active guest identity before reading or displaying data. */
+    public void requireGuestAccess() {
+        sessions.requireActive(guest);
+    }
+
     /**
      * Returns only product name, price, and stock for the active guest.
      * @param search literal name fragment; surrounding whitespace is removed and
@@ -53,6 +58,7 @@ public final class GuestService {
                 }
             }
         }
+        requireGuestAccess();
         return products;
     }
 
@@ -66,6 +72,7 @@ public final class GuestService {
                 balances.add(new BalanceRow(rows.getString("name"), rows.getBigDecimal("balance")));
             }
         }
+        requireGuestAccess();
         return balances;
     }
 
@@ -75,7 +82,7 @@ public final class GuestService {
      * @return a new connection that the caller must close
      */
     private Connection openReadConnection() throws IOException, SQLException {
-        sessions.requireActive(guest);
+        requireGuestAccess();
         Connection connection = DatabaseConnection.getConnection();
         try {
             connection.setReadOnly(true);
