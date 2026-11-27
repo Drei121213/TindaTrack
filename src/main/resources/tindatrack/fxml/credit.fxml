@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="tindatrack.credit.CreditController" spacing="8"
+      styleClass="login-root,credit-root" stylesheets="@../css/credit.css">
+    <HBox spacing="8">
+        <Button text="Back to Home" onAction="#handleBack" styleClass="guest-button" />
+        <Button fx:id="refreshButton" text="Refresh" onAction="#loadCustomers" styleClass="guest-button" />
+    </HBox>
+    <Label text="Customer Credit Management" wrapText="true" styleClass="credit-title" />
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <TextField fx:id="searchField" promptText="Search by customer name"
+                   accessibleText="Customer name" onAction="#loadCustomers" HBox.hgrow="ALWAYS" />
+        <Button fx:id="searchButton" text="Search" onAction="#loadCustomers" styleClass="guest-button" />
+        <Button fx:id="recordUtangButton" text="+ Record Utang" disable="true" styleClass="login-button" />
+    </HBox>
+    <Label text="Viewing only for now. Record Utang and Record Payment will be enabled in later tasks."
+           wrapText="true" styleClass="credit-status" />
+    <SplitPane orientation="VERTICAL" dividerPositions="0.52" VBox.vgrow="ALWAYS" minHeight="200">
+        <TableView fx:id="customersTable" editable="false" minHeight="90" styleClass="credit-table">
+            <columns>
+                <TableColumn fx:id="customerName" text="Customer" minWidth="90" prefWidth="160" />
+                <TableColumn fx:id="customerBalance" text="Balance" minWidth="80" prefWidth="95" />
+                <TableColumn fx:id="lastTransaction" text="Last Transaction" minWidth="130" prefWidth="155" />
+                <TableColumn fx:id="customerActions" text="Actions" minWidth="130" prefWidth="145" sortable="false" />
+            </columns>
+            <placeholder><Label fx:id="customerPlaceholder" text="No customers recorded yet." wrapText="true" /></placeholder>
+        </TableView>
+        <VBox spacing="6" minHeight="100">
+            <Label fx:id="historyTitle" text="Customer history" wrapText="true" styleClass="field-label" />
+            <TableView fx:id="historyTable" editable="false" VBox.vgrow="ALWAYS" minHeight="70" styleClass="credit-table">
+                <columns>
+                    <TableColumn fx:id="historyDate" text="Date" minWidth="130" prefWidth="155" />
+                    <TableColumn fx:id="historyType" text="Type" minWidth="65" prefWidth="75" />
+                    <TableColumn fx:id="historyItems" text="Items Purchased" minWidth="90" prefWidth="180" />
+                    <TableColumn fx:id="historyAmount" text="Amount" minWidth="80" prefWidth="95" />
+                </columns>
+                <placeholder><Label fx:id="historyPlaceholder" text="Select a customer to view utang and payments." wrapText="true" /></placeholder>
+            </TableView>
+        </VBox>
+    </SplitPane>
+    <Label fx:id="statusLabel" text="" wrapText="true" styleClass="credit-status" />
+</VBox>

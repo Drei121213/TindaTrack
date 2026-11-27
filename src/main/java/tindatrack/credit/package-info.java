@@ -1,5 +1,6 @@
 /**
  * Credit package from RTM Part D: credit data and credit management.
- * Features will be implemented in later tasks.
+ * Customer balances and credit/payment history are currently read-only.
+ * Recording utang and payments will be added in separate tasks.
  */
 package tindatrack.credit;

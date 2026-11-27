@@ -726,6 +726,91 @@ configuration.
 The regression checks also exercised owner registration and login, product add,
 search, edit and confirmed delete, and the limits on guest navigation and writes.
 
+## Day 5, Task 1: Customer Credit Management
+
+Sign in as the owner and select **Credit Management** on Home. The screen shows
+each customer's name, outstanding balance, and last transaction date. The last
+date is the latest date from either `credit_transactions` or `payments`; a dash
+means there is no recorded transaction. All customers are included, even when
+their balance is zero. Search by a name fragment, or clear the field and select
+**Search** to list everyone. **Refresh** reloads the currently entered search.
+
+Select a customer to display their utang and payment history, newest first.
+The history shows the date, type, purchased items (utang only), and amount.
+Payment amounts are shown as positive amounts with the **Payment** type; the
+outstanding balance comes directly from `customers.balance`. History is not used
+to reconstruct or change the stored balance. Money is displayed with two decimals.
+The divider between the two tables can be dragged to make either table taller.
+
+`Customer` and `CreditTransaction` are simple records containing display data.
+`CreditDao.findCustomers()` and `findHistory()` use prepared SELECT statements
+and close their JDBC resources with try-with-resources. Both require the exact
+active `OwnerSession` and request a read-only connection. `CreditController`
+runs those queries in background JavaFX `Task`s. It copies successful results
+into `ObservableList`s assigned to the two `TableView`s; each column's cell value
+factory selects the corresponding record field. Changing the list updates the
+display automatically. Old history requests are canceled and their callbacks
+ignored when selection changes. Access is checked again before displaying results.
+
+The application loads `credit.fxml` with `FXMLLoader`, obtains its separate
+`CreditController`, and supplies the owner's DAO and a Home navigation callback.
+The same owner session is retained while moving between Home and Credit.
+`credit.css` supplements the existing shared login stylesheet.
+
+This task only reads existing records. **+ Record Utang** and each customer's
+**Record Payment** button are disabled until Tasks 2 and 3. Guest Mode continues
+to use its existing separate read-only customer-name/balance view.
+
+From the project root, use Java 21 and run:
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+mvn verify
+mvn compile exec:exec
+mvn javafx:run
+```
+
+The middle command checks the existing database connection with SELECT 1.
+Start MySQL and check the ignored `config/database.properties` locally if that
+check cannot connect. Never include that credential file when staging changes.
+
+Manual checklist:
+
+1. Sign in and open **Credit Management**. Check the screen title and **Back to
+   Home** navigation. Reopening Credit should preserve the signed-in owner.
+2. With existing customers, compare their names and balances with MySQL Workbench.
+   Search a known name fragment; clear the field and search again. A name that
+   does not exist should display **No customers found.**
+3. With an empty customer table, expect **No customers recorded yet.** Do not
+   delete real records to perform this check. If there are no existing customers,
+   populated-list and history checks remain pending until the later recording task.
+4. Select an existing customer. Compare their history with both transaction tables.
+   Check that the latest date agrees with **Last Transaction**, amounts have two
+   decimals, and customers without history show the appropriate message.
+5. Select different customers quickly and refresh. Confirm the history belongs
+   to the current selection and that Refresh keeps the current search filter.
+6. Confirm the utang and payment buttons are disabled and cannot save anything.
+7. Log out and enter Guest Mode. Confirm its credit tab remains view-only and
+   has no owner recording controls.
+8. If a database connection is unavailable, expect a clear loading error. After
+   restoring the connection, select **Refresh** to retry.
+
+Task 1 verification: the Java 21 offline Maven verify succeeded, including the
+15 existing expiration JUnit checks. A temporary JavaFX check loaded all eight
+current FXML layouts and exercised Credit navigation using a test owner session,
+returning to Home, retry after a refused connection, and rejection of a guest on
+the owner route. Both DAO reads rejected signed-out, guest, recreated, and ended
+owner identities before database access. A rendered view was checked at the
+normal 640 x 560 scene size. The Maven JavaFX run command also reached application
+startup without a reported launch error and was then stopped.
+
+The configured MySQL endpoint refused the connection during verification.
+Therefore actual customer loading, search results from stored rows, transaction
+history, latest-date calculation, and successful recovery after reconnecting are
+**not yet verified**. No database records or schema were changed and no seed data
+was imported. SID-08 and SID-09 saving cases remain pending for later tasks.
+
 ## Day 2 integration verification
 
 With Java 21 selected and MySQL running, use these commands from the project root.

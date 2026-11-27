@@ -1,0 +1,263 @@
+package tindatrack.credit;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
+import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import tindatrack.core.SessionState.AccessDeniedException;
+
+/** Displays owner credit information; this first task performs no writes. */
+public final class CreditController {
+
+    private static final DateTimeFormatter DATE_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    @FXML private TableView<Customer> customersTable;
+    @FXML private TableColumn<Customer, String> customerName;
+    @FXML private TableColumn<Customer, BigDecimal> customerBalance;
+    @FXML private TableColumn<Customer, LocalDateTime> lastTransaction;
+    @FXML private TableColumn<Customer, Void> customerActions;
+    @FXML private TableView<CreditTransaction> historyTable;
+    @FXML private TableColumn<CreditTransaction, LocalDateTime> historyDate;
+    @FXML private TableColumn<CreditTransaction, String> historyType;
+    @FXML private TableColumn<CreditTransaction, String> historyItems;
+    @FXML private TableColumn<CreditTransaction, BigDecimal> historyAmount;
+    @FXML private TextField searchField;
+    @FXML private Button searchButton;
+    @FXML private Button refreshButton;
+    @FXML private Label customerPlaceholder;
+    @FXML private Label historyPlaceholder;
+    @FXML private Label historyTitle;
+    @FXML private Label statusLabel;
+
+    private final ObservableList<Customer> customers = FXCollections.observableArrayList();
+    private final ObservableList<CreditTransaction> history = FXCollections.observableArrayList();
+    private CreditDao credits;
+    private Runnable onBack;
+    private Task<List<Customer>> customerLoad;
+    private Task<List<CreditTransaction>> historyLoad;
+
+    @FXML
+    private void initialize() {
+        customersTable.setItems(customers);
+        historyTable.setItems(history);
+        customersTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        historyTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        customerName.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().name()));
+        customerBalance.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().balance()));
+        lastTransaction.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().lastTransaction()));
+        historyDate.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().date()));
+        historyType.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().type()));
+        historyItems.setCellValueFactory(cell -> new ReadOnlyStringWrapper(
+                cell.getValue().items() == null ? "—" : cell.getValue().items()));
+        historyAmount.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().amount()));
+        formatMoney(customerBalance);
+        formatMoney(historyAmount);
+        formatDate(lastTransaction);
+        formatDate(historyDate);
+
+        customerActions.setCellFactory(column -> new TableCell<>() {
+            private final Button payment = new Button("Record Payment");
+            {
+                payment.getStyleClass().add("credit-payment-button");
+                payment.setDisable(true);
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : payment);
+            }
+        });
+        customersTable.getSelectionModel().selectedItemProperty().addListener(
+                (property, previous, selected) -> loadHistory(selected));
+    }
+
+    public void configure(CreditDao credits, Runnable onBack) {
+        this.credits = credits;
+        this.onBack = onBack;
+        credits.requireOwnerAccess();
+        loadCustomers();
+    }
+
+    public void showNavigationError(String message) {
+        statusLabel.setText(message);
+    }
+
+    @FXML
+    private void handleBack() {
+        cancelLoads();
+        onBack.run();
+    }
+
+    /** Search and Refresh both reload the currently entered name fragment. */
+    @FXML
+    private void loadCustomers() {
+        if (credits == null) {
+            return;
+        }
+        cancelLoads();
+        String search = searchField.getText().strip();
+        customers.clear();
+        clearHistory();
+        setLoading(true);
+        customerPlaceholder.setText("Loading customers...");
+        statusLabel.setText("Loading customer balances...");
+
+        Task<List<Customer>> load = new Task<>() {
+            @Override
+            protected List<Customer> call() throws Exception {
+                return credits.findCustomers(search);
+            }
+        };
+        customerLoad = load;
+        load.setOnSucceeded(event -> {
+            if (customerLoad != load) {
+                return;
+            }
+            customerLoad = null;
+            try {
+                credits.requireOwnerAccess();
+                customers.setAll(load.getValue());
+                customerPlaceholder.setText(search.isEmpty()
+                        ? "No customers recorded yet." : "No customers found.");
+                statusLabel.setText(customers.size() + " customer(s). Select a customer to view history.");
+                setLoading(false);
+            } catch (AccessDeniedException denied) {
+                showAccessDenied(denied);
+            }
+        });
+        load.setOnFailed(event -> {
+            if (customerLoad != load) {
+                return;
+            }
+            customerLoad = null;
+            if (load.getException() instanceof AccessDeniedException denied) {
+                showAccessDenied(denied);
+            } else {
+                customerPlaceholder.setText("Cannot load customers. Please try again.");
+                statusLabel.setText("Could not load customer balances. Select Refresh to retry.");
+                setLoading(false);
+            }
+        });
+        start(load, "tindatrack-load-customers");
+    }
+
+    private void loadHistory(Customer customer) {
+        cancelHistory();
+        clearHistory();
+        if (customer == null) {
+            return;
+        }
+        historyTitle.setText("History — " + customer.name());
+        historyPlaceholder.setText("Loading history...");
+        Task<List<CreditTransaction>> load = new Task<>() {
+            @Override
+            protected List<CreditTransaction> call() throws Exception {
+                return credits.findHistory(customer.id());
+            }
+        };
+        historyLoad = load;
+        load.setOnSucceeded(event -> {
+            if (historyLoad != load) {
+                return;
+            }
+            historyLoad = null;
+            try {
+                credits.requireOwnerAccess();
+                history.setAll(load.getValue());
+                historyPlaceholder.setText("No transactions recorded for this customer.");
+            } catch (AccessDeniedException denied) {
+                showAccessDenied(denied);
+            }
+        });
+        load.setOnFailed(event -> {
+            if (historyLoad != load) {
+                return;
+            }
+            historyLoad = null;
+            if (load.getException() instanceof AccessDeniedException denied) {
+                showAccessDenied(denied);
+            } else {
+                historyPlaceholder.setText("Cannot load history. Please try again.");
+                statusLabel.setText("Could not load customer history. Select Refresh to retry.");
+            }
+        });
+        start(load, "tindatrack-load-credit-history");
+    }
+
+    private void clearHistory() {
+        history.clear();
+        historyTitle.setText("Customer history");
+        historyPlaceholder.setText("Select a customer to view utang and payments.");
+    }
+
+    private void showAccessDenied(AccessDeniedException denied) {
+        cancelLoads();
+        customers.clear();
+        clearHistory();
+        customerPlaceholder.setText(denied.getMessage());
+        statusLabel.setText(denied.getMessage());
+        setLoading(true);
+    }
+
+    private void setLoading(boolean loading) {
+        searchField.setDisable(loading);
+        searchButton.setDisable(loading);
+        refreshButton.setDisable(loading);
+    }
+
+    private void cancelHistory() {
+        if (historyLoad != null) {
+            historyLoad.cancel();
+            historyLoad = null;
+        }
+    }
+
+    private void cancelLoads() {
+        if (customerLoad != null) {
+            customerLoad.cancel();
+            customerLoad = null;
+        }
+        cancelHistory();
+    }
+
+    private static void start(Task<?> task, String name) {
+        Thread worker = new Thread(task, name);
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private static <T> void formatMoney(TableColumn<T, BigDecimal> column) {
+        column.setCellFactory(value -> new TableCell<>() {
+            @Override
+            protected void updateItem(BigDecimal amount, boolean empty) {
+                super.updateItem(amount, empty);
+                setText(empty || amount == null ? null : "₱" + amount.setScale(2).toPlainString());
+            }
+        });
+    }
+
+    private static <T> void formatDate(TableColumn<T, LocalDateTime> column) {
+        column.setCellFactory(value -> new TableCell<>() {
+            @Override
+            protected void updateItem(LocalDateTime date, boolean empty) {
+                super.updateItem(date, empty);
+                setText(empty ? null : date == null ? "—" : DATE_FORMAT.format(date));
+            }
+        });
+    }
+}

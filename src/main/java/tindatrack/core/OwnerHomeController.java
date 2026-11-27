@@ -14,13 +14,15 @@ public class OwnerHomeController {
 
     private Runnable onInventory;
     private Runnable onExpiringSoon;
+    private Runnable onCredit;
     private Runnable onLogout;
 
     public void configure(String ownerName, Runnable onInventory,
-                          Runnable onExpiringSoon, Runnable onLogout) {
+                          Runnable onExpiringSoon, Runnable onCredit, Runnable onLogout) {
         ownerGreeting.setText("Welcome, " + ownerName + "!");
         this.onInventory = onInventory;
         this.onExpiringSoon = onExpiringSoon;
+        this.onCredit = onCredit;
         this.onLogout = onLogout;
     }
 
@@ -40,6 +42,12 @@ public class OwnerHomeController {
     private void handleExpiringSoon() {
         clearNavigationError();
         onExpiringSoon.run();
+    }
+
+    @FXML
+    private void handleCredit() {
+        clearNavigationError();
+        onCredit.run();
     }
 
     private void clearNavigationError() {

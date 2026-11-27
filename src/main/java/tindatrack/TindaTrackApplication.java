@@ -14,6 +14,8 @@ import tindatrack.authentication.OwnerSession;
 import tindatrack.core.OwnerHomeController;
 import tindatrack.core.SessionState;
 import tindatrack.core.SessionState.AccessDeniedException;
+import tindatrack.credit.CreditController;
+import tindatrack.credit.CreditDao;
 import tindatrack.guest.GuestController;
 import tindatrack.guest.GuestService;
 import tindatrack.guest.GuestSession;
@@ -83,8 +85,20 @@ public class TindaTrackApplication extends Application {
                         () -> showInventory(stage, owner, home, products)),
                 () -> navigateOwner(owner, "Expiring Soon", controller::showNavigationError,
                         () -> showExpiringSoon(stage, owner, home, products)),
+                () -> navigateOwner(owner, "Credit Management", controller::showNavigationError,
+                        () -> showCredit(stage, owner, home)),
                 () -> returnToLogin(stage));
         stage.getScene().setRoot(home);
+    }
+
+    private void showCredit(Stage stage, OwnerSession owner, Parent home) throws IOException {
+        sessions.requireActive(owner);
+        FXMLLoader loader = loadView("credit.fxml");
+        CreditController controller = loader.getController();
+        controller.configure(new CreditDao(sessions, owner),
+                () -> navigateOwner(owner, "Home", controller::showNavigationError,
+                        () -> stage.getScene().setRoot(home)));
+        stage.getScene().setRoot(loader.getRoot());
     }
 
     private void showInventory(Stage stage, OwnerSession owner, Parent home, ProductDao products)

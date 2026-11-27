@@ -1,0 +1,36 @@
+.credit-root {
+    -fx-padding: 16px;
+}
+
+.credit-title {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #203d2e;
+}
+
+.credit-table {
+    -fx-border-color: #d6e4db;
+    -fx-background-color: white;
+}
+
+.credit-table .column-header .label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #203d2e;
+}
+
+.credit-status {
+    -fx-text-fill: #52675b;
+    -fx-font-size: 12px;
+}
+
+.credit-payment-button {
+    -fx-background-color: #e6f1ea;
+    -fx-text-fill: #203d2e;
+    -fx-background-radius: 6px;
+    -fx-font-size: 12px;
+}
+
+.credit-root .split-pane {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
