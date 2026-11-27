@@ -12,6 +12,7 @@ import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
+import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -122,6 +123,7 @@ public final class CreditController {
 
     @FXML
     private void handleRecordUtang() {
+        if (!active || customerLoad != null || paymentCustomerLoad != null) return;
         try {
             credits.requireOwnerAccess();
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/tindatrack/fxml/record-utang.fxml"));
@@ -148,7 +150,7 @@ public final class CreditController {
                 loadCustomers("Utang saved.", form.savedCustomerId());
             }
         } catch (IOException exception) {
-            statusLabel.setText("Could not open Record Utang. Please try again.");
+            showStatus("Could not open Record Utang. Please try again.", true);
         } catch (AccessDeniedException denied) {
             showAccessDenied(denied);
         }
@@ -166,7 +168,7 @@ public final class CreditController {
             return;
         }
         setLoading(true);
-        statusLabel.setText("Checking the customer's current balance...");
+        showStatus("Checking the customer's current balance...", false);
         Task<Optional<Customer>> load = new Task<>() {
             @Override
             protected Optional<Customer> call() throws Exception {
@@ -183,7 +185,7 @@ public final class CreditController {
             try {
                 credits.requireOwnerAccess();
                 if (load.getValue().isEmpty()) {
-                    statusLabel.setText("This customer was removed. Refresh the credit list.");
+                    showStatus("This customer was removed. Refresh the credit list.", true);
                     return;
                 }
                 Customer current = load.getValue().get();
@@ -192,14 +194,14 @@ public final class CreditController {
                     customers.set(index, current);
                 }
                 CreditRules.requireOutstandingBalance(current.balance());
-                statusLabel.setText("");
+                showStatus("", false);
                 openPaymentForm(current);
             } catch (CreditRules.ValidationException invalid) {
-                statusLabel.setText(invalid.getMessage());
+                showStatus(invalid.getMessage(), true);
             } catch (AccessDeniedException denied) {
                 showAccessDenied(denied);
             } catch (IOException exception) {
-                statusLabel.setText("Could not open Record Payment. Please try again.");
+                showStatus("Could not open Record Payment. Please try again.", true);
             }
         });
         load.setOnFailed(event -> {
@@ -211,7 +213,7 @@ public final class CreditController {
                 showAccessDenied(denied);
             } else {
                 setLoading(false);
-                statusLabel.setText("Cannot load the customer's balance. Please try again.");
+                showStatus("Cannot load the customer's balance. Please try again.", true);
             }
         });
         start(load, "tindatrack-payment-balance");
@@ -266,8 +268,8 @@ public final class CreditController {
         clearHistory();
         setLoading(true);
         customerPlaceholder.setText("Loading customers...");
-        statusLabel.setText(successMessage.isEmpty() ? "Loading customer balances..."
-                : successMessage + " Refreshing balances...");
+        showStatus(successMessage.isEmpty() ? "Loading customer balances..."
+                : successMessage + " Refreshing balances...", false);
 
         Task<List<Customer>> load = new Task<>() {
             @Override
@@ -287,8 +289,8 @@ public final class CreditController {
                 customersTable.sort();
                 customerPlaceholder.setText(search.isEmpty()
                         ? "No customers recorded yet." : "No customers found.");
-                statusLabel.setText((successMessage.isEmpty() ? "" : successMessage + " ")
-                        + customers.size() + " customer(s). Select a customer to view history.");
+                showStatus((successMessage.isEmpty() ? "" : successMessage + " ")
+                        + customers.size() + " customer(s). Select a customer to view history.", false);
                 setLoading(false);
                 if (selectCustomerId != null) {
                     Customer selected = customers.stream().filter(c -> c.id() == selectCustomerId)
@@ -310,8 +312,8 @@ public final class CreditController {
                 showAccessDenied(denied);
             } else {
                 customerPlaceholder.setText("Cannot load customers. Please try again.");
-                statusLabel.setText((successMessage.isEmpty() ? "" : successMessage + " ")
-                        + "Could not load customer balances. Select Refresh to retry.");
+                showStatus((successMessage.isEmpty() ? "" : successMessage + " ")
+                        + "Could not load customer balances. Select Refresh to retry.", true);
                 setLoading(false);
             }
         });
@@ -356,7 +358,7 @@ public final class CreditController {
                 showAccessDenied(denied);
             } else {
                 historyPlaceholder.setText("Cannot load history. Please try again.");
-                statusLabel.setText("Could not load customer history. Select Refresh to retry.");
+                showStatus("Could not load customer history. Select Refresh to retry.", true);
             }
         });
         start(load, "tindatrack-load-credit-history");
@@ -373,8 +375,14 @@ public final class CreditController {
         customers.clear();
         clearHistory();
         customerPlaceholder.setText(denied.getMessage());
-        statusLabel.setText(denied.getMessage());
+        showStatus(denied.getMessage(), true);
         setLoading(true);
+    }
+
+    /** Keeps existing message text while distinguishing failures from normal progress. */
+    private void showStatus(String message, boolean error) {
+        statusLabel.setText(message);
+        statusLabel.pseudoClassStateChanged(PseudoClass.getPseudoClass("error"), error);
     }
 
     private void setLoading(boolean loading) {

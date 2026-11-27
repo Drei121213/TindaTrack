@@ -42,6 +42,9 @@ public class LoginController {
     private Hyperlink createAccountLink;
 
     private boolean registrationAvailable;
+    private boolean active = true;
+    private Task<?> signInTask;
+    private Task<Boolean> accountCheck;
     private UserDao users;
     private Consumer<OwnerSession> onAuthenticated;
     private Runnable onGuestAccess;
@@ -70,6 +73,7 @@ public class LoginController {
      */
     @FXML
     private void handleLogin() {
+        if (!active || signInTask != null) return;
         String username = usernameField.getText().strip();
         if (username.isEmpty()) {
             showFeedback("Please fill in all fields.", true);
@@ -99,6 +103,8 @@ public class LoginController {
             }
         };
         signIn.setOnSucceeded(event -> {
+            if (!active || signInTask != signIn) return;
+            signInTask = null;
             loginForm.setDisable(false);
             Optional<OwnerSession> owner = signIn.getValue();
             if (owner.isPresent()) {
@@ -109,6 +115,8 @@ public class LoginController {
             }
         });
         signIn.setOnFailed(event -> {
+            if (!active || signInTask != signIn) return;
+            signInTask = null;
             loginForm.setDisable(false);
             Throwable failure = signIn.getException();
             if (failure instanceof AccessDeniedException denied) {
@@ -121,6 +129,7 @@ public class LoginController {
             passwordField.requestFocus();
         });
 
+        signInTask = signIn;
         Thread worker = new Thread(signIn, "tindatrack-sign-in");
         worker.setDaemon(true);
         worker.start();
@@ -128,6 +137,7 @@ public class LoginController {
 
     @FXML
     private void handleCreateAccount() {
+        if (!active || signInTask != null || accountCheck != null) return;
         if (!registrationAvailable) {
             showFeedback("", false);
             checkRegistrationAvailability();
@@ -176,6 +186,7 @@ public class LoginController {
      * Keeps registration unavailable while checking; a failed check exposes a retry link.
      */
     private void checkRegistrationAvailability() {
+        if (!active || accountCheck != null) return;
         createAccountLink.setVisible(false);
         registrationAvailable = false;
 
@@ -186,11 +197,15 @@ public class LoginController {
             }
         };
         check.setOnSucceeded(event -> {
+            if (!active || accountCheck != check) return;
+            accountCheck = null;
             registrationAvailable = !check.getValue();
             createAccountLink.setText("Create Account");
             createAccountLink.setVisible(registrationAvailable);
         });
         check.setOnFailed(event -> {
+            if (!active || accountCheck != check) return;
+            accountCheck = null;
             createAccountLink.setText("Retry account check");
             createAccountLink.setVisible(true);
             if (feedbackLabel.getText().isEmpty()) {
@@ -198,6 +213,7 @@ public class LoginController {
             }
         });
 
+        accountCheck = check;
         Thread worker = new Thread(check, "tindatrack-check-owner");
         worker.setDaemon(true);
         worker.start();
@@ -205,8 +221,22 @@ public class LoginController {
 
     @FXML
     private void handleGuestAccess() {
+        if (!active || signInTask != null) return;
         passwordField.clear();
         onGuestAccess.run();
+    }
+
+    /** Prevents an old screen's asynchronous results from changing the active screen. */
+    public void deactivate() {
+        active = false;
+        passwordField.clear();
+        if (accountCheck != null) {
+            accountCheck.cancel();
+            accountCheck = null;
+        }
+        // Let credential verification finish so its finally block clears the password copy.
+        // Its callbacks are ignored because this controller is no longer active.
+        signInTask = null;
     }
 
     private void showFeedback(String message, boolean error) {

@@ -9,6 +9,7 @@ import javafx.beans.property.ReadOnlyIntegerWrapper;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.concurrent.Task;
+import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -101,6 +102,7 @@ public final class InventoryController {
 
     @FXML
     private void handleAddProduct() {
+        if (!active || currentLoad != null || deletion != null) return;
         openProductForm(null);
     }
 
@@ -135,7 +137,7 @@ public final class InventoryController {
                 loadProducts(original == null ? "Product saved." : "Changes saved.");
             }
         } catch (IOException exception) {
-            statusLabel.setText("Could not open " + title + ". Please try again.");
+            showStatus("Could not open " + title + ". Please try again.", true);
         }
     }
 
@@ -145,12 +147,12 @@ public final class InventoryController {
      * @param successMessage optional completed-action message to retain during refresh
      */
     private void loadProducts(String successMessage) {
-        if (!active) return;
+        if (!active || deletion != null) return;
         rememberSelection();
         if (currentLoad != null) currentLoad.cancel();
         String search = submittedSearch;
-        statusLabel.setText(successMessage.isEmpty() ? "Loading products..."
-                : successMessage + " Refreshing inventory...");
+        showStatus(successMessage.isEmpty() ? "Loading products..."
+                : successMessage + " Refreshing inventory...", false);
         productsTable.setPlaceholder(new Label("Loading products..."));
         setLoading(true);
 
@@ -176,7 +178,7 @@ public final class InventoryController {
                 if (selected != null) productsTable.scrollTo(selected);
                 String emptyMessage = search.isEmpty() ? "No products to display yet." : "No products found.";
                 productsTable.setPlaceholder(new Label(emptyMessage));
-                statusLabel.setText(successMessage);
+                showStatus(successMessage, false);
                 setLoading(false);
             } catch (AccessDeniedException denied) {
                 showAccessDenied(denied);
@@ -196,7 +198,7 @@ public final class InventoryController {
                 if (!productsTable.getItems().isEmpty()) {
                     message += " Showing previous results.";
                 }
-                statusLabel.setText(message);
+                showStatus(message, true);
             }
             productsTable.setPlaceholder(new Label("Use Refresh to try again."));
             setLoading(false);
@@ -205,6 +207,12 @@ public final class InventoryController {
         Thread worker = new Thread(task, "tindatrack-reload-products");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    /** Keeps existing message text while distinguishing failures from normal progress. */
+    private void showStatus(String message, boolean error) {
+        statusLabel.setText(message);
+        statusLabel.pseudoClassStateChanged(PseudoClass.getPseudoClass("error"), error);
     }
 
     private void setLoading(boolean loading) {
@@ -218,15 +226,16 @@ public final class InventoryController {
 
     private void showAccessDenied(AccessDeniedException denied) {
         productsTable.getItems().clear();
-        statusLabel.setText(denied.getMessage());
+        showStatus(denied.getMessage(), true);
         setLoading(true);
     }
 
     @FXML
     private void handleEditProduct() {
+        if (!active || currentLoad != null || deletion != null) return;
         Product selected = productsTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            statusLabel.setText("Select a product to edit.");
+            showStatus("Select a product to edit.", true);
             return;
         }
         openProductForm(selected);
@@ -234,9 +243,10 @@ public final class InventoryController {
 
     @FXML
     private void handleDeleteProduct() {
+        if (!active || currentLoad != null || deletion != null) return;
         Product selected = productsTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
-            statusLabel.setText("Select a product to delete.");
+            showStatus("Select a product to delete.", true);
             return;
         }
 
@@ -253,7 +263,7 @@ public final class InventoryController {
         }
 
         setLoading(true);
-        statusLabel.setText("Deleting product...");
+        showStatus("Deleting product...", false);
         Task<ProductDao.DeleteResult> task = new Task<>() {
             @Override
             protected ProductDao.DeleteResult call() throws Exception {
@@ -278,11 +288,11 @@ public final class InventoryController {
                 }
                 case STALE -> {
                     setLoading(false);
-                    statusLabel.setText("This product changed or was removed. Refresh Inventory before trying again.");
+                    showStatus("This product changed or was removed. Refresh Inventory before trying again.", true);
                 }
                 case REFERENCED -> {
                     setLoading(false);
-                    statusLabel.setText("This product cannot be deleted because another record references it.");
+                    showStatus("This product cannot be deleted because another record references it.", true);
                 }
             }
         });
@@ -292,7 +302,7 @@ public final class InventoryController {
             setLoading(false);
             String message = task.getException() instanceof AccessDeniedException denied
                     ? denied.getMessage() : "Product was not deleted. Please try again.";
-            statusLabel.setText(message);
+            showStatus(message, true);
         });
 
         Thread worker = new Thread(task, "tindatrack-delete-product");

@@ -47,6 +47,7 @@ public final class ProductFormController {
     private ProductDao products;
     private Product original;
     private boolean saved;
+    private boolean saving;
     private String rejectedDateText;
 
     /**
@@ -151,7 +152,7 @@ public final class ProductFormController {
      */
     @FXML
     private void handleSave() {
-        if (isSaving()) {
+        if (saving || saved) {
             return;
         }
         showError(formError, "");
@@ -283,6 +284,7 @@ public final class ProductFormController {
     }
 
     private void setSaving(boolean saving) {
+        this.saving = saving;
         fields.setDisable(saving);
         saveButton.setDisable(saving);
         cancelButton.setDisable(saving);
@@ -290,7 +292,7 @@ public final class ProductFormController {
     }
 
     boolean isSaving() {
-        return saveButton.isDisabled();
+        return saving;
     }
 
     boolean wasSaved() {

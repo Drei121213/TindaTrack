@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 6, Task 3
+## Current scope: Day 6, Task 4
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -1418,6 +1418,106 @@ The offscreen previews do not certify every Windows display-scaling setting;
 confirm your own desktop scaling using the checklist. The broader validation and
 error-handling review remains Task 4, and final RTM integration sign-off remains
 Task 5. No release/distribution package was prepared.
+
+## Day 6, Task 4: Validation, error handling, and feedback
+
+Task 4 preserves the existing validation limits, expected error messages, schema,
+SQL, credit/payment calculations, and password hashing. No production records or
+credentials were changed, and no seed script was imported.
+
+### Review and changes
+
+- Login already rejects empty inputs, clears the password field before its
+  background check, clears the copied password in `finally`, and reports a safe
+  connection error. It now explicitly blocks repeat login/guest/registration
+  actions while signing in. Account-availability checks cannot overlap.
+- `LoginController.deactivate()` marks a departed login screen inactive, cancels
+  its account-availability check, and ignores late callbacks. Credential verification
+  finishes normally so its password-clearing `finally` block still runs. The app
+  deactivates the controller when entering owner/guest mode or stopping.
+- Registration now has an explicit saving flag and a completed-account guard.
+  Its handler and Cancel action refuse overlapping work. Existing duplicate
+  username, existing owner, required-field, length, and password-confirmation
+  feedback is preserved.
+- Product saving now uses an explicit saving flag and ignores a repeated action
+  after a successful save. Existing name/price/stock validation, optional dates,
+  unchanged-edit rejection, and past-date Yes/No confirmation are preserved.
+  Inventory Add/Edit/Delete handlers ignore inactive/busy views, and refreshes
+  cannot re-enable inventory controls during a pending deletion.
+- Inventory and Credit status labels use a red, bold error state for failures and
+  validation feedback. Progress and successful refreshes clear that state. Their
+  message text is unchanged, including completed credit/payment confirmations.
+- Logout still clears the session before returning to Login. If the login layout
+  cannot load, the window now presents a signed-out message and **Retry Login**
+  rather than closing silently. Old owner access is rejected during recovery.
+
+The JDBC review found bound parameters for user-supplied values and
+try-with-resources for connections, statements, and results. The manual connection
+check uses only a fixed `SELECT 1`. Credit writes already use transactions,
+rollback on failure, and locked balance checks to prevent overpayment. These
+working database operations were preserved. Database work stays on background
+JavaFX tasks, and raw database exceptions are not shown in the application UI.
+
+### Run and verify
+
+From the nested project folder in PowerShell:
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+mvn verify
+mvn javafx:run
+```
+
+Run Task 4 checks and the previous navigation/layout regressions:
+
+```powershell
+python -u scripts/test_day5.py --validation-checks --layout-checks
+```
+
+Final verification passed **74 ordinary JUnit tests, 16 isolated MySQL tests,
+8 authentication controller checks, 31 JavaFX feature/recovery checks, and
+20 offscreen layout checks**. The new report is
+`docs/testing/day6-task4-results.json`. Previous Day 5 and Day 6 task reports are
+unchanged. Normal `mvn verify` skips the 16 opt-in database tests; the isolated
+launcher runs them separately against its verified temporary MySQL server.
+
+`Day6AuthenticationCheck` loads the real login/registration FXML and controllers
+with fake DAO responses. It checks required fields, duplicate/existing-owner
+messages, busy guards, connection retries, and an obsolete successful-login result.
+It opens no database. The JavaFX integration checks use only the previously
+approved disposable MySQL fixtures and verify product validation, duplicate names,
+past-date No/Yes, NULL expiration, unchanged/stale edits, delete cancellation,
+read-failure recovery, and logout recovery. The latter temporarily moves only
+`target/classes/tindatrack/fxml/login.fxml` and restores it in `finally` to simulate
+an unavailable layout. It never changes the source FXML. Test credentials, the
+isolated server, and its data directory are cleaned up after the run.
+
+### Manual validation checklist
+
+1. On Login, submit blank fields and an incorrect password. Confirm clear feedback,
+   password clearing, and that repeated clicks do not start overlapping requests.
+   Registration remains available only when permitted by the existing owner rule.
+2. If registration is available, check missing fields and mismatched passwords.
+   Do not reset your existing owner account to expose this form. Duplicate-owner
+   feedback is also covered by the fake-DAO checks.
+3. Open Add Product and try an empty name, zero/negative/nonnumeric price, more than
+   two decimal places, negative/fractional stock, and an invalid calendar date.
+   Confirm field errors and that the form stays open. Cancel after inspection.
+4. In a test database, set a past expiration date: No must leave the form open
+   without saving, and Yes must save. No expiration date must store NULL and
+   exclude the item from Expiring Soon. Test cancellation of Delete as well.
+5. Check invalid utang/payment amounts and a payment larger than the balance.
+   Errors must leave the form open; successful transactions must refresh the list
+   and show the existing confirmation. Use test records for actual saves.
+6. Confirm logout, Guest Mode exit, and a fresh login still work. Connection-failure
+   and missing-layout fault injection are handled by the isolated launcher; there
+   is no need to alter your configured credentials or remove source files manually.
+
+No current failures remain in the executed checks. These changes do not add
+transaction retry/replay behavior or alter business rules. Final RTM/B4 integration
+sign-off belongs to Task 5, which still requires approval. No release package was
+prepared.
 
 ## Day 2 integration verification
 

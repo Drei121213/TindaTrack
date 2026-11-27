@@ -30,6 +30,7 @@ public class RegistrationController {
     @FXML private Button cancelButton;
 
     private String createdUsername;
+    private boolean saving;
     private UserDao users;
 
     void setUserDao(UserDao users) {
@@ -42,6 +43,7 @@ public class RegistrationController {
      */
     @FXML
     private void handleCreateAccount() {
+        if (saving || createdUsername != null) return;
         String fullName = fullNameField.getText().strip();
         String username = usernameField.getText().strip();
         if (!validate(fullName, username)) {
@@ -142,6 +144,7 @@ public class RegistrationController {
     }
 
     private void setSaving(boolean saving) {
+        this.saving = saving;
         formFields.setDisable(saving);
         createButton.setDisable(saving);
         cancelButton.setDisable(saving);
@@ -151,13 +154,14 @@ public class RegistrationController {
 
     @FXML
     private void closeForm() {
+        if (saving) return;
         passwordField.clear();
         confirmationField.clear();
         cancelButton.getScene().getWindow().hide();
     }
 
     boolean isSaving() {
-        return createButton.isDisabled();
+        return saving;
     }
 
     String getCreatedUsername() {

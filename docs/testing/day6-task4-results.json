@@ -1,0 +1,495 @@
+{
+  "executedAt": "2026-11-28T01:06:48.135487+08:00",
+  "scope": "Day 6 Task 4 validation and recovery checks",
+  "environment": "Java 21 / JavaFX / disposable MySQL 8 inside project target",
+  "productionDatabaseTouched": false,
+  "seedApproval": "User approved isolated test data for Day 5 Task 5.",
+  "ui": [
+    {
+      "id": "Login_WrongPassword",
+      "status": "Pass",
+      "actual": "Existing test owner rejected wrongpass and remained on login.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Login_SunnyDay",
+      "status": "Pass",
+      "actual": "maggie/store123 opened the signed-in owner Home, then Credit Management.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_SunnyDay",
+      "status": "Pass",
+      "actual": "Recorded 2 Pancit Canton for 30.00; list refreshed to 280.00, history saved, stock stayed 40, and repeat Save was disabled.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_NewCustomer",
+      "status": "Pass",
+      "actual": "The New customer choice created one Aling Rosa with balance 45.00 and one Sardines purchase.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_EmptyFields",
+      "status": "Pass",
+      "actual": "Blank name and blank amount showed field errors; no purchase or customer was inserted.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_InvalidAmount",
+      "status": "Pass",
+      "actual": "0, -10, abc and 1.001 showed Please enter a valid amount.; nothing was saved.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_Cancel",
+      "status": "Pass",
+      "actual": "Filled a 30.00 purchase and canceled; the form closed, balance stayed 250.00 and history did not change.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable temporary endpoint produced Utang was not saved. Please try again.; form stayed open and balance stayed 250.00.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_PartialPayment",
+      "status": "Pass",
+      "actual": "Paid 50.00 from 250.00; the list refreshed to 200.00 with a separate payment and success message.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_FullPayment",
+      "status": "Pass",
+      "actual": "Paid 250.00; the stored and displayed balance became 0.00.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_NoBalance",
+      "status": "Pass",
+      "actual": "Kuya Jun at 0.00 showed This customer has no balance. without opening the payment form.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_EmptyOrZero",
+      "status": "Pass",
+      "actual": "Blank, zero, negative and nonnumeric payments showed the expected error without saving.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_MoreThanBalance",
+      "status": "Pass",
+      "actual": "300.00 against 250.00 showed Payment cannot be more than the balance.; no payment was saved.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_Cancel",
+      "status": "Pass",
+      "actual": "Canceled a filled 50.00 payment; the form closed, balance stayed 250.00 and payment count stayed unchanged.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable temporary endpoint produced Payment was not saved. Please try again.; form stayed open and balance stayed 250.00.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordPayment_TwoDecimals",
+      "status": "Pass",
+      "actual": "49.50 reduced 250.00 to 200.50; the displayed balance retained two decimals and the next 300.00 was rejected.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day5_StalePaymentForm",
+      "status": "Pass",
+      "actual": "Another connection paid 100.00 while a 200.00 form was open; save rejected against 150.00 and refreshed the form balance.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day6_RememberOwnerViews",
+      "status": "Pass",
+      "actual": "Sidebar routes retained inventory/customer searches and selections, expiration range and selection, and the same owner session.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day6_RefreshOnReturn",
+      "status": "Pass",
+      "actual": "Reopening Credit and Inventory read committed changes while retaining their search state.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day6_LeaveDuringLoads",
+      "status": "Pass",
+      "actual": "Leaving Credit, Inventory and Expiring Soon during loads cleared their tables; obsolete callbacks did not restore rows. One main stage remained.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day6_ProductValidation",
+      "status": "Pass",
+      "actual": "Blank names, invalid prices, stock overflow, invalid dates and duplicate names were rejected without adding products.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day6_ExpirationConfirmationAndNull",
+      "status": "Pass",
+      "actual": "Past-date No canceled the save; Yes saved once. Removing expiration saved NULL, excluded the item from Expiring Soon, and unchanged edits were rejected.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day6_StaleProductAndDeleteCancel",
+      "status": "Pass",
+      "actual": "A stale edit did not overwrite a newer price; Cancel preserved the product; confirmed deletion removed only the test item.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day6_ReadFailureRecovery",
+      "status": "Pass",
+      "actual": "Inventory, expiration and credit failures showed safe messages; restored connections allowed refresh and cleared error styling.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day6_LogoutScreenRecovery",
+      "status": "Pass",
+      "actual": "A missing compiled login FXML cleared the session and showed Retry Login; restoring the file allowed a fresh login in the same window.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day5_InventoryExpirationRegression",
+      "status": "Pass",
+      "actual": "Owner inventory add, search, edit and confirmed delete worked; Expiring Soon listed the expired fixture and navigation preserved the session.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "GuestMode_CreditTab",
+      "status": "Pass",
+      "actual": "Guest Credit tab showed the same committed customer names/balances as the owner, using only the two permitted columns.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "GuestMode_NoOwnerFunctions",
+      "status": "Pass",
+      "actual": "Guest UI had no owner controls; owner credit route and both write services rejected guest access; exit cleared pending rows.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day6_NewLoginClearsViewState",
+      "status": "Pass",
+      "actual": "After logout and guest exit, a new owner login started with empty searches, no selected customer/product, and the default seven-day range.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "RecordUtang_SavedImmediately",
+      "status": "Pass",
+      "actual": "A separate JVM relaunched, signed in, and displayed Aling Nena at 280.00 with the saved 30.00 utang.",
+      "method": "Automated JavaFX / isolated MySQL"
+    },
+    {
+      "id": "Day5_PaymentRestart",
+      "status": "Pass",
+      "actual": "A separate JVM displayed Aling Rosa at 40.00 with both her 45.00 purchase and 5.00 payment preserved.",
+      "method": "Automated JavaFX / isolated MySQL"
+    }
+  ],
+  "database": [
+    {
+      "id": "removedCustomerAndBalanceOverflowCannotSave",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "failedNewCustomerUtangRollsBackTheCustomerAsWell",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "existingUtangIncreasesOnlyTheCorrectBalanceAndPreservesStock",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "simultaneousUtangDoesNotLoseEitherBalanceIncrease",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "fullPaymentEndsAtZeroAndRejectsFurtherPayment",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "decimalPaymentKeepsExactMoneyAndRejectsNextOverpayment",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "earlierDatesAndLatestTransactionIncludeBothHistoryTypes",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "utangRollsBackAfterThePurchaseInsertIfBalanceUpdateFails",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "overpaymentAndInvalidRequestsLeaveStoredDataUnchanged",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "guestSeesCommittedBalancesButCannotSaveAnything",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "simultaneousNewNameCreatesOneCustomerWithBothPurchases",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "typedExistingNameReusesTheCustomer",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "simultaneousPaymentsCannotOverdrawTheCustomer",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "partialPaymentSavesASeparateRecordAndPreservesUtang",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "newCustomerAndPurchaseAreSavedTogether",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    },
+    {
+      "id": "paymentRollsBackAfterThePaymentInsertIfBalanceUpdateFails",
+      "status": "Pass",
+      "actual": "JUnit assertions passed against the verified isolated MySQL instance.",
+      "method": "JUnit / MySQL"
+    }
+  ],
+  "unit": [
+    {
+      "suite": "tindatrack.credit.CreditRulesTest",
+      "tests": 30,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tindatrack.credit.PaymentRulesTest",
+      "tests": 25,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tindatrack.guest.GuestPermissionsTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "tindatrack.inventory.ExpirationDatesTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "layout": [
+    {
+      "id": "owner-home-1024x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "inventory-1024x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "expiring-soon-1024x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "credit-1024x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "login-1024x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "guest-1024x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "owner-home-1366x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "inventory-1366x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "expiring-soon-1366x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "credit-1366x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "login-1366x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "guest-1366x768",
+      "status": "Pass",
+      "actual": "Controls and table widths fit; rendered with in-memory examples.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "register-500x600",
+      "status": "Pass",
+      "actual": "Save/Create and Cancel fit with validation messages visible; fields scroll.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "register-420x460",
+      "status": "Pass",
+      "actual": "Save/Create and Cancel fit with validation messages visible; fields scroll.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "product-form-500x600",
+      "status": "Pass",
+      "actual": "Save/Create and Cancel fit with validation messages visible; fields scroll.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "product-form-420x460",
+      "status": "Pass",
+      "actual": "Save/Create and Cancel fit with validation messages visible; fields scroll.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "record-utang-500x600",
+      "status": "Pass",
+      "actual": "Save/Create and Cancel fit with validation messages visible; fields scroll.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "record-utang-420x460",
+      "status": "Pass",
+      "actual": "Save/Create and Cancel fit with validation messages visible; fields scroll.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "record-payment-500x600",
+      "status": "Pass",
+      "actual": "Save/Create and Cancel fit with validation messages visible; fields scroll.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    },
+    {
+      "id": "record-payment-420x460",
+      "status": "Pass",
+      "actual": "Save/Create and Cancel fit with validation messages visible; fields scroll.",
+      "method": "Offscreen JavaFX / in-memory rows / no database"
+    }
+  ],
+  "authentication": [
+    {
+      "id": "Login_RequiredFields",
+      "status": "Pass",
+      "actual": "FXML/controller assertions passed with fake DAO responses; no database opened.",
+      "method": "JavaFX / fake DAO / no database"
+    },
+    {
+      "id": "Login_BusyGuard",
+      "status": "Pass",
+      "actual": "FXML/controller assertions passed with fake DAO responses; no database opened.",
+      "method": "JavaFX / fake DAO / no database"
+    },
+    {
+      "id": "Login_ObsoleteResult",
+      "status": "Pass",
+      "actual": "FXML/controller assertions passed with fake DAO responses; no database opened.",
+      "method": "JavaFX / fake DAO / no database"
+    },
+    {
+      "id": "Login_ConnectionRetry",
+      "status": "Pass",
+      "actual": "FXML/controller assertions passed with fake DAO responses; no database opened.",
+      "method": "JavaFX / fake DAO / no database"
+    },
+    {
+      "id": "Login_AccountCheckRetry",
+      "status": "Pass",
+      "actual": "FXML/controller assertions passed with fake DAO responses; no database opened.",
+      "method": "JavaFX / fake DAO / no database"
+    },
+    {
+      "id": "Registration_RequiredFields",
+      "status": "Pass",
+      "actual": "FXML/controller assertions passed with fake DAO responses; no database opened.",
+      "method": "JavaFX / fake DAO / no database"
+    },
+    {
+      "id": "Registration_BusyAndDuplicate",
+      "status": "Pass",
+      "actual": "FXML/controller assertions passed with fake DAO responses; no database opened.",
+      "method": "JavaFX / fake DAO / no database"
+    },
+    {
+      "id": "Registration_ConnectionRetry",
+      "status": "Pass",
+      "actual": "FXML/controller assertions passed with fake DAO responses; no database opened.",
+      "method": "JavaFX / fake DAO / no database"
+    }
+  ]
+}

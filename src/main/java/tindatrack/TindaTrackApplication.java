@@ -6,7 +6,10 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import tindatrack.authentication.LoginController;
@@ -29,6 +32,7 @@ import tindatrack.inventory.ProductDao;
 public class TindaTrackApplication extends Application {
 
     private final SessionState sessions = new SessionState();
+    private LoginController login;
     private BorderPane ownerLayout;
     private OwnerNavigationController navigation;
     private Destination currentDestination;
@@ -55,12 +59,15 @@ public class TindaTrackApplication extends Application {
     }
 
     private void showLogin(Stage stage) throws IOException {
+        if (login != null) login.deactivate();
+        login = null;
         sessions.clear();
         discardOwnerViews();
         stage.setMinWidth(460);
         stage.setMinHeight(540);
         FXMLLoader loader = loadView("login.fxml");
         LoginController controller = loader.getController();
+        login = controller;
         controller.configure(sessions, owner -> {
             try {
                 showOwnerHome(stage, owner);
@@ -86,6 +93,8 @@ public class TindaTrackApplication extends Application {
         FXMLLoader navigationLoader = loadView("owner-navigation.fxml");
         ((OwnerHomeController) homeLoader.getController()).configure(owner.fullName());
         sessions.begin(owner);
+        if (login != null) login.deactivate();
+        login = null;
         homeView = homeLoader.getRoot();
         products = new ProductDao(sessions, owner);
         credits = new CreditDao(sessions, owner);
@@ -204,6 +213,8 @@ public class TindaTrackApplication extends Application {
         FXMLLoader loader = loadView("guest.fxml");
         GuestSession guest = new GuestSession();
         sessions.begin(guest);
+        if (login != null) login.deactivate();
+        login = null;
         ((GuestController) loader.getController()).configure(
                 new GuestService(sessions, guest), () -> returnToLogin(stage));
         stage.getScene().setRoot(loader.getRoot());
@@ -213,12 +224,26 @@ public class TindaTrackApplication extends Application {
         try {
             showLogin(stage);
         } catch (IOException exception) {
-            stage.close();
+            showLoginRecovery(stage);
         }
+    }
+
+    /** Logout has already cleared the session; offer a retry instead of silently closing. */
+    private void showLoginRecovery(Stage stage) {
+        Label message = new Label("You are signed out. Could not open Login. Please try again.");
+        message.setWrapText(true);
+        Button retry = new Button("Retry Login");
+        retry.getStyleClass().add("login-button");
+        retry.setOnAction(event -> returnToLogin(stage));
+        VBox recovery = new VBox(16, message, retry);
+        recovery.setAlignment(javafx.geometry.Pos.CENTER);
+        recovery.getStyleClass().add("login-root");
+        stage.getScene().setRoot(recovery);
     }
 
     @Override
     public void stop() {
+        if (login != null) login.deactivate();
         sessions.clear();
         discardOwnerViews();
     }

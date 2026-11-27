@@ -23,6 +23,11 @@
     -fx-font-size: 13px;
 }
 
+.credit-status:error {
+    -fx-text-fill: #a12922;
+    -fx-font-weight: bold;
+}
+
 .credit-root .combo-box,
 .login-card .combo-box,
 .login-card .date-picker {

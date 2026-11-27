@@ -18,3 +18,8 @@
 .inventory-status {
     -fx-text-fill: #52675b;
 }
+
+.inventory-status:error {
+    -fx-text-fill: #a12922;
+    -fx-font-weight: bold;
+}

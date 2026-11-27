@@ -176,6 +176,18 @@ public final class Day5UiCheck {
                 runCase("Day6_LeaveDuringLoads", Day5UiCheck::leaveDuringLoads,
                         "Leaving Credit, Inventory and Expiring Soon during loads cleared their tables; obsolete callbacks did not restore rows. One main stage remained.");
             }
+            if ("true".equals(System.getenv("TINDATRACK_VALIDATION_CHECKS"))) {
+                runCase("Day6_ProductValidation", Day5UiCheck::productValidation,
+                        "Blank names, invalid prices, stock overflow, invalid dates and duplicate names were rejected without adding products.");
+                runCase("Day6_ExpirationConfirmationAndNull", Day5UiCheck::expirationValidation,
+                        "Past-date No canceled the save; Yes saved once. Removing expiration saved NULL, excluded the item from Expiring Soon, and unchanged edits were rejected.");
+                runCase("Day6_StaleProductAndDeleteCancel", Day5UiCheck::staleProductAndDeleteCancel,
+                        "A stale edit did not overwrite a newer price; Cancel preserved the product; confirmed deletion removed only the test item.");
+                runCase("Day6_ReadFailureRecovery", Day5UiCheck::readFailureRecovery,
+                        "Inventory, expiration and credit failures showed safe messages; restored connections allowed refresh and cleared error styling.");
+                runCase("Day6_LogoutScreenRecovery", Day5UiCheck::logoutScreenRecovery,
+                        "A missing compiled login FXML cleared the session and showed Retry Login; restoring the file allowed a fresh login in the same window.");
+            }
             runCase("Day5_InventoryExpirationRegression", Day5UiCheck::inventoryRegression,
                     "Owner inventory add, search, edit and confirmed delete worked; Expiring Soon listed the expired fixture and navigation preserved the session.");
             runCase("GuestMode_CreditTab", Day5UiCheck::guestBalances,
@@ -200,6 +212,133 @@ public final class Day5UiCheck {
             });
             Platform.exit();
         }
+    }
+
+    private static void addValidationProduct() throws Exception {
+        click("Inventory"); waitList();
+        async(() -> { button(stage, "Add Product").fire(); return null; });
+        waitFor(() -> findForm() != null);
+        setText(form(), "#nameField", "Task 4 Validation Item");
+        setText(form(), "#priceField", "12.34");
+        setText(form(), "#stockField", "3");
+    }
+
+    private static void productValidation() throws Exception {
+        addValidationProduct(); long before = number("SELECT COUNT(*) FROM products");
+        setText(form(), "#nameField", ""); pressForm("#saveButton");
+        check(text(form(), "#nameError").equals("Enter a product name."), "Blank name was accepted");
+        setText(form(), "#nameField", "Task 4 Validation Item");
+        for (String value : List.of("0", "-1", "abc", "1.001", "100000000")) {
+            setText(form(), "#priceField", value); pressForm("#saveButton");
+            check(visible(form(), "#priceError"), "Invalid price accepted: " + value);
+        }
+        setText(form(), "#priceField", "12.34");
+        for (String value : List.of("-1", "1.5", "abc", "2147483648")) {
+            setText(form(), "#stockField", value); pressForm("#saveButton");
+            check(visible(form(), "#stockError"), "Invalid stock accepted: " + value);
+        }
+        setText(form(), "#stockField", "3");
+        fx(() -> { ((DatePicker)findForm().getScene().lookup("#expirationField")).getEditor().setText("2026-13-45"); return null; });
+        pressForm("#saveButton"); check(text(form(), "#dateError").equals("Please enter a valid date."), "Invalid date accepted");
+        fx(() -> { ((CheckBox)findForm().getScene().lookup("#noExpiration")).setSelected(true); return null; });
+        setText(form(), "#nameField", "Lucky Me Pancit Canton"); pressForm("#saveButton");
+        waitFor(() -> !((Button)findForm().getScene().lookup("#saveButton")).isDisabled());
+        check(text(form(), "#nameError").equals("This product already exists."), "Duplicate name feedback differed");
+        cancel(); check(number("SELECT COUNT(*) FROM products") == before, "Invalid input changed products");
+    }
+
+    private static Stage pastDateAlert() {
+        return Window.getWindows().stream().filter(w -> w instanceof Stage s && s.isShowing()
+                && s.getTitle().equals("Past expiration date")).map(w -> (Stage) w).findFirst().orElse(null);
+    }
+
+    private static void expirationValidation() throws Exception {
+        addValidationProduct(); Stage productForm = form();
+        fx(() -> { ((DatePicker)productForm.getScene().lookup("#expirationField")).setValue(LocalDate.now().minusDays(1)); return null; });
+        async(() -> { ((Button)productForm.getScene().lookup("#saveButton")).fire(); return null; });
+        waitFor(() -> pastDateAlert() != null);
+        fx(() -> { button(pastDateAlert(), "No").fire(); return null; });
+        waitFor(() -> pastDateAlert() == null);
+        check(number("SELECT COUNT(*) FROM products WHERE name='Task 4 Validation Item'") == 0, "No saved a product");
+        async(() -> { ((Button)productForm.getScene().lookup("#saveButton")).fire(); return null; });
+        waitFor(() -> pastDateAlert() != null);
+        fx(() -> { button(pastDateAlert(), "Yes").fire(); return null; });
+        waitFor(() -> !productForm.isShowing()); waitList();
+        check(number("SELECT COUNT(*) FROM products WHERE name='Task 4 Validation Item'") == 1, "Past-date save count differs");
+        setText(stage, "#searchField", "Task 4 Validation Item"); click("Search"); waitList();
+        selectFirstProduct(); openEditProduct();
+        fx(() -> { ((CheckBox)findForm().getScene().lookup("#noExpiration")).setSelected(true); return null; }); save();
+        check(number("SELECT COUNT(*) FROM products WHERE name='Task 4 Validation Item' AND expiration_date IS NULL") == 1, "NULL expiration was not saved");
+        click("Expiring Soon"); waitList();
+        check(fx(() -> ((TableView<?>)stage.getScene().lookup("#expiringTable")).getItems().stream()
+                .noneMatch(p -> ((Product)p).name().equals("Task 4 Validation Item"))), "NULL expiration appeared in alerts");
+        click("Inventory"); waitList(); selectFirstProduct(); openEditProduct();
+        pressForm("#saveButton"); check(text(form(), "#formError").equals("No changes to save."), "Unchanged edit was submitted"); cancel();
+    }
+
+    private static void selectFirstProduct() throws Exception {
+        fx(() -> { ((TableView<?>)stage.getScene().lookup("#productsTable")).getSelectionModel().select(0); return null; });
+    }
+
+    private static void openEditProduct() throws Exception {
+        async(() -> { button(stage, "Edit Product").fire(); return null; }); waitFor(() -> findForm() != null);
+    }
+
+    private static void staleProductAndDeleteCancel() throws Exception {
+        selectFirstProduct(); openEditProduct();
+        ProductDao products = new ProductDao(sessions, owner);
+        Product original = products.findByName("Task 4 Validation Item").getFirst();
+        check(products.updateProduct(original, new BigDecimal("17.00"), original.stockQuantity(), null), "Test update failed");
+        setText(form(), "#priceField", "20"); pressForm("#saveButton");
+        waitFor(() -> !((Button)findForm().getScene().lookup("#saveButton")).isDisabled());
+        check(text(form(), "#formError").contains("changed or was removed"), "Stale edit feedback missing");
+        check(products.findByName(original.name()).getFirst().price().equals(new BigDecimal("17.00")), "Stale edit overwrote price");
+        cancel(); refresh(); selectFirstProduct();
+        async(() -> { button(stage, "Delete Product").fire(); return null; }); waitFor(() -> findForm() != null);
+        fx(() -> { button(findForm(), "Cancel").fire(); return null; }); waitFor(() -> findForm() == null);
+        check(products.findByName(original.name()).size() == 1, "Cancel deleted product");
+        async(() -> { button(stage, "Delete Product").fire(); return null; }); waitFor(() -> findForm() != null);
+        fx(() -> { button(findForm(), "Delete").fire(); return null; }); waitFor(() -> findForm() == null); waitList();
+        check(products.findByName(original.name()).isEmpty(), "Confirmed delete failed");
+    }
+
+    private static void readFailureRecovery() throws Exception {
+        setText(stage, "#searchField", ""); click("Search"); waitList();
+        Path config = Path.of("config/database.properties"); byte[] original = Files.readAllBytes(config);
+        try (SocketChannel endpoint = SocketChannel.open()) {
+            endpoint.bind(new InetSocketAddress("127.0.0.1", 0));
+            int port = ((InetSocketAddress)endpoint.getLocalAddress()).getPort();
+            Files.writeString(config, "db.url=jdbc:mysql://127.0.0.1:" + port + "/tindatrack\ndb.username=test\ndb.password=test\n");
+            refresh();
+            check(text(stage, "#statusLabel").contains("Could not load products."), "Missing inventory connection feedback");
+            check(fx(() -> label(stage, "#statusLabel").getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("error"))), "Inventory error styling missing");
+            click("Expiring Soon"); waitFor(() -> ((Button)stage.getScene().lookup("#refreshButton")).getText().equals("Retry"));
+            check(text(stage, "#listMessage").equals("Cannot load the list. Please try again."), "Expiration retry feedback differed");
+            click("Credit Management"); waitList();
+            check(text(stage, "#statusLabel").contains("Could not load customer balances."), "Missing credit connection feedback");
+        } finally { Files.write(config, original); }
+        refresh();
+        check(fx(() -> !label(stage, "#statusLabel").getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("error"))), "Credit error styling did not clear");
+        click("Expiring Soon"); waitList();
+        click("Inventory"); waitList();
+        check(fx(() -> !label(stage, "#statusLabel").getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("error"))), "Inventory error styling did not clear");
+        click("Credit Management"); waitList();
+    }
+
+    private static void logoutScreenRecovery() throws Exception {
+        Path target = Path.of(System.getenv("TINDATRACK_TEST_TARGET")).toRealPath();
+        Path compiled = target.resolve("classes/tindatrack/fxml/login.fxml");
+        Path backup = compiled.resolveSibling("login-task4-backup.fxml");
+        check(compiled.toRealPath().startsWith(target) && !Files.exists(backup), "Unsafe compiled FXML test path");
+        Files.move(compiled, backup);
+        try {
+            click("Logout");
+            check(fx(stage::isShowing), "Login loading failure closed the window");
+            check(fx(() -> button(stage, "Retry Login").isVisible()), "Missing signed-out recovery action");
+            sessions.requireSignedOut();
+            expectDenied(() -> { sessions.requireActive(owner); return null; });
+        } finally { Files.move(backup, compiled); }
+        click("Retry Login"); login();
     }
 
     private static void rememberOwnerViews() throws Exception {
