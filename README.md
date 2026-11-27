@@ -758,8 +758,8 @@ The same owner session is retained while moving between Home and Credit.
 `credit.css` supplements the existing shared login stylesheet.
 
 At the end of Task 1, this screen only read existing records and both recording
-buttons were disabled. Task 2 below now enables **+ Record Utang**; **Record
-Payment** remains disabled. Guest Mode continues
+buttons were disabled. Tasks 2 and 3 below now enable **+ Record Utang** and
+**Record Payment** for owners. Guest Mode continues
 to use its existing separate read-only customer-name/balance view.
 
 From the project root, use Java 21 and run:
@@ -791,8 +791,7 @@ Manual checklist:
    decimals, and customers without history show the appropriate message.
 5. Select different customers quickly and refresh. Confirm the history belongs
    to the current selection and that Refresh keeps the current search filter.
-6. For the current Task 2 version, test utang using the checklist below. Confirm
-   that payment buttons remain disabled.
+6. Test the recording controls using the Task 2 and Task 3 checklists below.
 7. Log out and enter Guest Mode. Confirm its credit tab remains view-only and
    has no owner recording controls.
 8. If a database connection is unavailable, expect a clear loading error. After
@@ -897,7 +896,7 @@ Manual SID-08 checklist (use approved test records):
 6. **RecordUtang_SavedImmediately:** Complete a save, close the application, reopen
    it, and verify the same balance and transaction are still present.
 7. Select an earlier date and verify that the history uses that date. Check that
-   inventory stock is unchanged, Record Payment is disabled, and Guest Mode has
+   inventory stock is unchanged and Guest Mode has
    no recording controls.
 
 The Java 21 build passed 45 JUnit checks: 30 for credit rules/permissions and 15
@@ -916,12 +915,125 @@ original credential file was not changed. Customer, credit-transaction, and paym
 counts were identical before and after these checks. The form was also visually
 checked at 520 x 620. Temporary harness and credential-copy files were removed.
 
-The read-only connection check succeeded during Task 2. The configured database
-has no customers, so populated customer/history verification and successful saving
-remain manual checks. No seed data or production test records were created.
+The read-only connection check succeeded during Task 2. At that time, the database
+had no customers, so populated customer/history verification and successful saving
+remained manual checks. No seed data or production test records were created.
 Actual commit, rollback after a partial write, concurrent saves, and persistence
 after restarting have not yet been verified against MySQL. Full B4 workbook
 results will be recorded in the separately approved testing task.
+
+## Day 5, Task 3: Record Payment
+
+In owner **Credit Management**, select **Record Payment** beside a customer.
+The app first reads that customer's current balance. If it is zero, the list
+shows **This customer has no balance.** and does not open the form. Otherwise,
+the form shows their name, current balance, and today's date. Enter the amount
+to preview the remaining balance. Partial and full payments are supported, and
+the calendar can select an earlier payment date.
+
+Blank, zero, negative, nonnumeric, excessive-precision, and oversized amounts
+are rejected. A payment above the balance shows **Payment cannot be more than
+the balance.** Money remains BigDecimal in Java and DECIMAL(10,2) in MySQL, with
+two decimal places in the interface. The preview is informational: saving always
+checks the latest locked balance inside the database transaction.
+
+`PaymentRequest` carries an existing customer's ID, payment amount, and date.
+`RecordPaymentController` handles previewing, field messages, and the background
+save. `CreditService` checks owner access and validates requests. The shared
+`CreditRules` now supplies the same amount and date rules to both forms and
+calculates the remaining balance. `CreditDao.findCustomer()` reads a fresh
+snapshot for the opening check, while `recordPayment()` performs the save.
+
+Each payment is a separate row in the existing `payments` table, with its own
+payment_id, customer_id, amount, and payment_date. Previous credit purchases
+are preserved. The history table already combines utang and payment entries.
+No schema, inventory, authentication, or guest-screen changes are needed.
+
+The payment transaction performs these steps:
+
+1. Disable automatic commits and SELECT the customer balance FOR UPDATE.
+2. Validate the amount against that locked balance, rejecting zero balances or
+   overpayments before inserting anything.
+3. Insert the payment and update the customer's remaining balance.
+4. Recheck owner access and commit both changes together. Any SQL or validation
+   failure triggers rollback, undoing any changes in that transaction.
+
+The row lock is also used by utang saves. A simultaneous operation for the same
+customer must wait for the earlier transaction to finish, then reads the updated
+balance. For example, two requests to pay 100.00 against 150.00 cannot both pass:
+the second sees 50.00 and is rejected. The database's existing nonnegative-balance
+constraint provides an additional safeguard.
+
+If another payment leaves less than this form's requested amount, the rejected
+save returns the current balance so the form updates it. A fully paid customer
+cannot save again. While saving, the fields, Save, Cancel, and window-close
+action are disabled. Successful saving closes the form, clears the search filter,
+reloads/selects the customer, and shows **Payment saved. Remaining balance: ...**
+using the committed result. A failed list reload keeps the payment confirmation
+so it is distinguishable from a failed save.
+
+Run from the project root with Java 21:
+
+```powershell
+mvn test
+mvn verify
+mvn compile exec:exec
+mvn javafx:run
+```
+
+Use the Java 21 environment commands in Task 1 if needed. The connection check
+only executes SELECT 1. The configured MySQL server must be running.
+
+Manual SID-09 checklist (use approved test records):
+
+1. **RecordPayment_PartialPayment:** With an existing test balance of 250.00, pay
+   50.00. Expect 200.00, a payment history entry, and a success message.
+2. **RecordPayment_FullPayment:** Pay the exact remaining balance. Expect 0.00.
+   Try its Record Payment button again: expect the no-balance message and no form.
+3. **RecordPayment_EmptyOrZero:** Try blank, 0, -10, abc, and 1.001. Expect
+   **Please enter a valid amount.** with no stored payment or balance change.
+4. **RecordPayment_MoreThanBalance:** Enter more than the balance. Expect the
+   overpayment message, no payment, and an unchanged balance.
+5. **RecordPayment_TwoDecimals:** On a suitable test balance of 250.00, pay 49.50.
+   Expect 200.50. An attempted 300.00 payment must be rejected. Use your actual
+   starting balance to calculate equivalent checks if it differs.
+6. **RecordPayment_Cancel:** Enter valid payment details and cancel or close the
+   form before saving. Confirm that no payment or balance update was stored.
+7. **RecordPayment_DatabaseError:** In a dedicated test setup, make the connection
+   unavailable after opening the form and select Save. Expect **Payment was not
+   saved. Please try again.** and an open form. Do not interrupt production service.
+8. Confirm the selected date appears in history, close/reopen the app, and verify
+   the payment persists. Compare earlier utang records to confirm they remain.
+9. On a dedicated test database, open two application instances for the same
+   customer and attempt payments whose sum exceeds the balance. Confirm the
+   second operation uses the new balance and cannot make it negative. Mid-write
+   rollback testing also belongs in this separate test setup.
+10. Confirm Guest Mode has no recording controls and still displays balances.
+
+Verification performed for Task 3:
+
+- Java 21 `mvn -B -o verify` passed 70 JUnit checks: 25 payment, 30 existing credit,
+  and 15 expiration checks. Payment checks cover partial/full/decimal results,
+  invalid amounts, overpayment, zero balances, request/date validation, and
+  rejection of guest and inactive owner access before database operations.
+- A temporary JavaFX check loaded all ten FXML layouts, read the existing customer,
+  opened the payment form from its actual row button, and canceled it.
+- Form checks verified partial/full/decimal previews using in-memory display
+  values, invalid input, missing dates, a zero-balance configuration guard, and
+  Cancel. These display values were never inserted into MySQL.
+- A save attempt used a bound, non-listening endpoint in a temporary configuration
+  copy to verify the exact save-error message and disabled saving controls. The
+  original credential file was unchanged. Before/after customer balances and
+  customer, utang, and payment counts matched. The form was visually checked at
+  520 x 540, then the temporary check files and credential copy were removed.
+
+No zero-balance customer existed for the actual row-button check, so that route
+remains a manual check despite the tested zero-balance rules/form guard. Successful
+MySQL payment commits, post-save refresh, simultaneous database payments, rollback
+after a partial write, and persistence after restart have not been executed by
+the agent. No seed data or database test records were created. JUnit calculations
+do not establish database concurrency or rollback behavior. B4 workbook result
+recording remains reserved for the separately approved testing task.
 
 ## Day 2 integration verification
 

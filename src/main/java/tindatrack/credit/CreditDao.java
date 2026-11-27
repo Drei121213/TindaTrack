@@ -12,13 +12,29 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import tindatrack.authentication.OwnerSession;
 import tindatrack.core.DatabaseConnection;
 import tindatrack.core.SessionState;
 
-/** Reads credit data and saves utang for the currently signed-in owner. */
+/** Reads credit data and saves utang/payments for the currently signed-in owner. */
 public final class CreditDao {
+
+    private static final String CUSTOMER_SELECT = """
+            SELECT c.customer_id, c.name, c.balance, latest.last_transaction
+            FROM customers c
+            LEFT JOIN (
+                SELECT customer_id, MAX(activity_date) AS last_transaction
+                FROM (
+                    SELECT customer_id, transaction_date AS activity_date
+                    FROM credit_transactions
+                    UNION ALL
+                    SELECT customer_id, payment_date AS activity_date FROM payments
+                ) activity
+                GROUP BY customer_id
+            ) latest ON latest.customer_id = c.customer_id
+            """;
 
     private final SessionState sessions;
     private final OwnerSession owner;
@@ -142,42 +158,101 @@ public final class CreditDao {
     }
 
     /**
+     * Rechecks the balance while holding the same row lock used by utang saves.
+     * The payment and balance reduction are committed together, or rolled back.
+     */
+    BigDecimal recordPayment(PaymentRequest request) throws IOException, SQLException {
+        requireOwnerAccess();
+        PaymentRequest validated = CreditRules.validate(request);
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                BigDecimal balance;
+                try (PreparedStatement select = connection.prepareStatement(
+                        "SELECT balance FROM customers WHERE customer_id = ? FOR UPDATE")) {
+                    select.setInt(1, validated.customerId());
+                    try (ResultSet rows = select.executeQuery()) {
+                        if (!rows.next()) {
+                            throw new CreditRules.ValidationException("customer",
+                                    "This customer was removed. Cancel and refresh the credit list.");
+                        }
+                        balance = rows.getBigDecimal("balance");
+                    }
+                }
+                BigDecimal remaining = CreditRules.subtractPayment(balance, validated.amount());
+                requireOwnerAccess();
+                try (PreparedStatement insert = connection.prepareStatement(
+                        "INSERT INTO payments (customer_id, amount, payment_date) VALUES (?, ?, ?)")) {
+                    insert.setInt(1, validated.customerId());
+                    insert.setBigDecimal(2, validated.amount());
+                    insert.setObject(3, validated.date().atTime(LocalTime.now().withNano(0)));
+                    insert.executeUpdate();
+                }
+                try (PreparedStatement update = connection.prepareStatement(
+                        "UPDATE customers SET balance = ? WHERE customer_id = ?")) {
+                    update.setBigDecimal(1, remaining);
+                    update.setInt(2, validated.customerId());
+                    if (update.executeUpdate() != 1) {
+                        throw new SQLException("The customer balance could not be updated.");
+                    }
+                }
+                requireOwnerAccess();
+                connection.commit();
+                return remaining;
+            } catch (SQLException | RuntimeException exception) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackFailure) {
+                    exception.addSuppressed(rollbackFailure);
+                }
+                throw exception;
+            }
+        }
+    }
+
+    /** Gets a fresh snapshot before deciding whether to open Record Payment. */
+    public Optional<Customer> findCustomer(int customerId) throws IOException, SQLException {
+        requireOwnerAccess();
+        List<Customer> customers;
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setReadOnly(true);
+            try (PreparedStatement statement = connection.prepareStatement(
+                    CUSTOMER_SELECT + " WHERE c.customer_id = ?")) {
+                statement.setInt(1, customerId);
+                customers = readCustomers(statement);
+            }
+        }
+        requireOwnerAccess();
+        return customers.stream().findFirst();
+    }
+
+    /**
      * Finds names containing the literal search text. An empty search lists everyone.
      * Last transaction includes both utang and payments, without changing the schema.
      */
     public List<Customer> findCustomers(String search) throws IOException, SQLException {
         requireOwnerAccess();
-        String sql = """
-                SELECT c.customer_id, c.name, c.balance, latest.last_transaction
-                FROM customers c
-                LEFT JOIN (
-                    SELECT customer_id, MAX(activity_date) AS last_transaction
-                    FROM (
-                        SELECT customer_id, transaction_date AS activity_date
-                        FROM credit_transactions
-                        UNION ALL
-                        SELECT customer_id, payment_date AS activity_date FROM payments
-                    ) activity
-                    GROUP BY customer_id
-                ) latest ON latest.customer_id = c.customer_id
-                WHERE LOCATE(?, c.name) > 0
-                ORDER BY c.name, c.customer_id
-                """;
-        List<Customer> customers = new ArrayList<>();
+        String sql = CUSTOMER_SELECT + " WHERE LOCATE(?, c.name) > 0 ORDER BY c.name, c.customer_id";
+        List<Customer> customers;
         try (Connection connection = DatabaseConnection.getConnection()) {
             connection.setReadOnly(true);
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, search.strip());
-                try (ResultSet rows = statement.executeQuery()) {
-                    while (rows.next()) {
-                        customers.add(new Customer(rows.getInt("customer_id"), rows.getString("name"),
-                                rows.getBigDecimal("balance"),
-                                rows.getObject("last_transaction", LocalDateTime.class)));
-                    }
-                }
+                customers = readCustomers(statement);
             }
         }
         requireOwnerAccess();
+        return customers;
+    }
+
+    private List<Customer> readCustomers(PreparedStatement statement) throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        try (ResultSet rows = statement.executeQuery()) {
+            while (rows.next()) {
+                customers.add(new Customer(rows.getInt("customer_id"), rows.getString("name"),
+                        rows.getBigDecimal("balance"), rows.getObject("last_transaction", LocalDateTime.class)));
+            }
+        }
         return customers;
     }
 

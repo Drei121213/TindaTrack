@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -24,7 +25,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import tindatrack.core.SessionState.AccessDeniedException;
 
-/** Displays owner credit information and opens the Record Utang form. */
+/** Displays owner credit information and opens the utang/payment forms. */
 public final class CreditController {
 
     private static final DateTimeFormatter DATE_FORMAT =
@@ -55,6 +56,7 @@ public final class CreditController {
     private Runnable onBack;
     private Task<List<Customer>> customerLoad;
     private Task<List<CreditTransaction>> historyLoad;
+    private Task<Optional<Customer>> paymentCustomerLoad;
 
     @FXML
     private void initialize() {
@@ -79,7 +81,7 @@ public final class CreditController {
             private final Button payment = new Button("Record Payment");
             {
                 payment.getStyleClass().add("credit-payment-button");
-                payment.setDisable(true);
+                payment.setOnAction(event -> handleRecordPayment(getTableRow().getItem()));
             }
 
             @Override
@@ -139,6 +141,94 @@ public final class CreditController {
             statusLabel.setText("Could not open Record Utang. Please try again.");
         } catch (AccessDeniedException denied) {
             showAccessDenied(denied);
+        }
+    }
+
+    /** Reads the current balance before opening SB09, including the no-balance case. */
+    private void handleRecordPayment(Customer selected) {
+        if (selected == null || customerLoad != null || paymentCustomerLoad != null) {
+            return;
+        }
+        try {
+            credits.requireOwnerAccess();
+        } catch (AccessDeniedException denied) {
+            showAccessDenied(denied);
+            return;
+        }
+        setLoading(true);
+        statusLabel.setText("Checking the customer's current balance...");
+        Task<Optional<Customer>> load = new Task<>() {
+            @Override
+            protected Optional<Customer> call() throws Exception {
+                return credits.findCustomer(selected.id());
+            }
+        };
+        paymentCustomerLoad = load;
+        load.setOnSucceeded(event -> {
+            if (paymentCustomerLoad != load) {
+                return;
+            }
+            paymentCustomerLoad = null;
+            setLoading(false);
+            try {
+                credits.requireOwnerAccess();
+                if (load.getValue().isEmpty()) {
+                    statusLabel.setText("This customer was removed. Refresh the credit list.");
+                    return;
+                }
+                Customer current = load.getValue().get();
+                int index = customers.indexOf(selected);
+                if (index >= 0) {
+                    customers.set(index, current);
+                }
+                CreditRules.requireOutstandingBalance(current.balance());
+                statusLabel.setText("");
+                openPaymentForm(current);
+            } catch (CreditRules.ValidationException invalid) {
+                statusLabel.setText(invalid.getMessage());
+            } catch (AccessDeniedException denied) {
+                showAccessDenied(denied);
+            } catch (IOException exception) {
+                statusLabel.setText("Could not open Record Payment. Please try again.");
+            }
+        });
+        load.setOnFailed(event -> {
+            if (paymentCustomerLoad != load) {
+                return;
+            }
+            paymentCustomerLoad = null;
+            if (load.getException() instanceof AccessDeniedException denied) {
+                showAccessDenied(denied);
+            } else {
+                setLoading(false);
+                statusLabel.setText("Cannot load the customer's balance. Please try again.");
+            }
+        });
+        start(load, "tindatrack-payment-balance");
+    }
+
+    private void openPaymentForm(Customer customer) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/tindatrack/fxml/record-payment.fxml"));
+        Scene scene = new Scene(loader.load(), 520, 540);
+        scene.getStylesheets().addAll(customersTable.getScene().getStylesheets());
+        RecordPaymentController form = loader.getController();
+        form.configure(new CreditService(credits), customer);
+        Stage dialog = new Stage();
+        dialog.initOwner(customersTable.getScene().getWindow());
+        dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.setTitle("TindaTrack - Record Payment");
+        dialog.setScene(scene);
+        dialog.setMinWidth(420);
+        dialog.setMinHeight(420);
+        dialog.setOnCloseRequest(event -> {
+            if (form.isSaving()) {
+                event.consume();
+            }
+        });
+        dialog.showAndWait();
+        if (form.savedBalance() != null) {
+            searchField.clear();
+            loadCustomers("Payment saved. Remaining balance: ₱" + form.savedBalance().toPlainString(), customer.id());
         }
     }
 
@@ -269,6 +359,7 @@ public final class CreditController {
         searchButton.setDisable(loading);
         refreshButton.setDisable(loading);
         recordUtangButton.setDisable(loading);
+        customersTable.setDisable(loading);
     }
 
     private void cancelHistory() {
@@ -279,6 +370,10 @@ public final class CreditController {
     }
 
     private void cancelLoads() {
+        if (paymentCustomerLoad != null) {
+            paymentCustomerLoad.cancel();
+            paymentCustomerLoad = null;
+        }
         if (customerLoad != null) {
             customerLoad.cancel();
             customerLoad = null;
