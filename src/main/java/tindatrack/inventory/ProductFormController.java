@@ -49,6 +49,11 @@ public final class ProductFormController {
     private boolean saved;
     private String rejectedDateText;
 
+    /**
+     * Keeps invalid typed dates visible for Save to reject instead of losing the text
+     * during JavaFX date commits. Selecting No Expiration clears and disables the date.
+     * Reselecting the current calendar day restores valid text even without a value change.
+     */
     @FXML
     private void initialize() {
         expirationField.setConverter(new StringConverter<LocalDate>() {
@@ -139,6 +144,11 @@ public final class ProductFormController {
         }
     }
 
+    /**
+     * Validates product fields and the typed date before starting a database write.
+     * Rejects unchanged edits and asks for confirmation when a changed date is in the past.
+     * Uses the original snapshot on edits so the DAO can detect a conflicting change.
+     */
     @FXML
     private void handleSave() {
         if (isSaving()) {

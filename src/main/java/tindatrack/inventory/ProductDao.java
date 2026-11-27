@@ -29,6 +29,12 @@ public final class ProductDao {
         this.owner = owner;
     }
 
+    /**
+     * Checks the product name and inserts under a shared MySQL name lock.
+     * Rechecks the owner session after waiting and immediately before the insert.
+     * @param expirationDate expiration date, or null for no expiration
+     * @return DUPLICATE_NAME when the name check finds a row; otherwise ADDED
+     */
     public AddResult addProduct(String name, BigDecimal price, int stockQuantity,
                                 LocalDate expirationDate) throws IOException, SQLException {
         sessions.requireActive(owner);
@@ -58,6 +64,12 @@ public final class ProductDao {
         }
     }
 
+    /**
+     * Updates price, stock, and expiration only if all stored fields still match original.
+     * The MySQL null-safe equality operator also matches two absent expiration dates.
+     * @param original snapshot loaded before editing; the product name is not changed
+     * @return true if exactly one row was updated; false if no row matched the snapshot
+     */
     public boolean updateProduct(Product original, BigDecimal price, int stockQuantity,
                                  LocalDate expirationDate) throws IOException, SQLException {
         sessions.requireActive(owner);
@@ -77,6 +89,11 @@ public final class ProductDao {
         }
     }
 
+    /**
+     * Deletes only a row that still matches the complete original product snapshot.
+     * @return DELETED for one removed row, STALE for no match, or REFERENCED for
+     * MySQL foreign-key errors 1451 and 1217; other SQL errors are propagated
+     */
     public DeleteResult deleteProduct(Product original) throws IOException, SQLException {
         sessions.requireActive(owner);
         String sql = """
@@ -97,6 +114,11 @@ public final class ProductDao {
         }
     }
 
+    /**
+     * Binds the original ID, name, price, stock, and expiration in that order.
+     * @param start one-based position of the first snapshot parameter
+     * @param original snapshot used by update and delete to detect stale data
+     */
     private void bindOriginal(PreparedStatement statement, int start, Product original)
             throws SQLException {
         statement.setInt(start, original.id());
@@ -119,6 +141,11 @@ public final class ProductDao {
         return findByName("");
     }
 
+    /**
+     * Searches product names using a bound literal fragment rather than LIKE wildcards.
+     * @param name fragment to find after stripping whitespace; empty matches all names
+     * @return matching products ordered by name and product ID
+     */
     public List<Product> findByName(String name) throws IOException, SQLException {
         sessions.requireActive(owner);
         String sql = """

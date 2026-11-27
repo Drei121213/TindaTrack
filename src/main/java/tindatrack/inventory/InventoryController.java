@@ -113,6 +113,11 @@ public final class InventoryController {
         }
     }
 
+    /**
+     * Loads the last submitted search on a background task while inventory actions
+     * are disabled. Ordinary failures retain earlier rows; an ended session clears them.
+     * @param successMessage optional completed-action message to retain during refresh
+     */
     private void loadProducts(String successMessage) {
         String search = submittedSearch;
         statusLabel.setText(successMessage.isEmpty() ? "Loading products..."

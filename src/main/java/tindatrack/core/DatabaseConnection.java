@@ -54,6 +54,12 @@ public final class DatabaseConnection {
         return DriverManager.getConnection(url, connectionProperties);
     }
 
+    /**
+     * Rejects missing or blank database settings without trimming the returned value.
+     * Preserving the value lets the caller keep meaningful whitespace in a password.
+     * @return the configured value exactly as loaded from the properties file
+     * @throws IOException if the requested setting is absent or blank
+     */
     private static String requiredProperty(Properties config, String key) throws IOException {
         String value = config.getProperty(key);
         if (value == null || value.isBlank()) {

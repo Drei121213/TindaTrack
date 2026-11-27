@@ -20,6 +20,11 @@ public final class PasswordHasher {
     private PasswordHasher() {
     }
 
+    /**
+     * Derives a PBKDF2-HMAC-SHA256 hash with a fresh 16-byte random salt.
+     * @param password characters to hash; the caller remains responsible for clearing them
+     * @return algorithm, iteration count, Base64 salt, and Base64 hash separated by dollar signs
+     */
     public static String hash(char[] password) throws GeneralSecurityException {
         byte[] salt = new byte[SALT_BYTES];
         RANDOM.nextBytes(salt);
@@ -49,6 +54,11 @@ public final class PasswordHasher {
         }
     }
 
+    /**
+     * Accepts only the current algorithm and iteration count with a 16-byte salt
+     * and a 32-byte hash after Base64 decoding.
+     * @return decoded hash data, or null for a missing or unsupported encoding
+     */
     private static StoredHash decode(String encodedHash) {
         if (encodedHash == null) {
             return null;
@@ -72,6 +82,10 @@ public final class PasswordHasher {
         return null;
     }
 
+    /**
+     * Derives 32 bytes using the configured PBKDF2 iteration count and supplied salt.
+     * Clears the key specification password copy in finally; the input array is unchanged.
+     */
     private static byte[] derive(char[] password, byte[] salt) throws GeneralSecurityException {
         PBEKeySpec spec = new PBEKeySpec(password, salt, ITERATIONS, HASH_BYTES * Byte.SIZE);
         try {

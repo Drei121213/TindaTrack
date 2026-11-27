@@ -28,6 +28,10 @@ public class UserDao {
     record LoginAccount(int userId, String fullName, String passwordHash) {
     }
 
+    /**
+     * Looks up login data only while signed out, binding the username as a SQL value.
+     * @return the matching login record, or an empty result if no row exists
+     */
     Optional<LoginAccount> findByUsername(String username) throws IOException, SQLException {
         sessions.requireSignedOut();
         String sql = "SELECT user_id, full_name, password_hash FROM users WHERE username = ?";
@@ -54,6 +58,12 @@ public class UserDao {
         }
     }
 
+    /**
+     * Checks for an existing username or owner under a connection-scoped MySQL lock
+     * before inserting an account. The lock is released when the connection closes.
+     * @param passwordHash an already encoded password hash, never a plain password
+     * @return CREATED, USERNAME_TAKEN, or OWNER_EXISTS according to the database checks
+     */
     public CreateResult createOwner(String fullName, String username, String passwordHash)
             throws IOException, SQLException {
         sessions.requireSignedOut();
@@ -94,6 +104,11 @@ public class UserDao {
         }
     }
 
+    /**
+     * Waits up to three seconds for the named registration lock on this connection.
+     * This serializes the owner check and insert among callers using the same lock.
+     * @throws SQLException if MySQL does not grant the lock
+     */
     private void lockOwnerRegistration(Connection connection) throws SQLException {
         try (PreparedStatement lock = connection.prepareStatement("SELECT GET_LOCK(?, 3)")) {
             lock.setString(1, "tindatrack.owner-registration");

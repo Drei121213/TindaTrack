@@ -63,6 +63,11 @@ public class LoginController {
         createAccountLink.managedProperty().bind(createAccountLink.visibleProperty());
     }
 
+    /**
+     * Validates login input, then checks credentials on a background task.
+     * Clears the password field before starting and clears the copied character array
+     * when the task finishes its credential check, including exceptional exits.
+     */
     @FXML
     private void handleLogin() {
         String username = usernameField.getText().strip();
@@ -166,6 +171,10 @@ public class LoginController {
         }
     }
 
+    /**
+     * Checks whether the single owner account already exists without blocking JavaFX.
+     * Keeps registration unavailable while checking; a failed check exposes a retry link.
+     */
     private void checkRegistrationAvailability() {
         createAccountLink.setVisible(false);
         registrationAvailable = false;

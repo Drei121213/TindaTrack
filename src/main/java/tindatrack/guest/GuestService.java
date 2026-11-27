@@ -29,6 +29,12 @@ public final class GuestService {
         this.guest = guest;
     }
 
+    /**
+     * Returns only product name, price, and stock for the active guest.
+     * @param search literal name fragment; surrounding whitespace is removed and
+     * an empty fragment matches all names through MySQL LOCATE
+     * @return matching rows ordered by name and product ID
+     */
     public List<ProductRow> findProducts(String search) throws IOException, SQLException {
         String sql = """
                 SELECT name, price, stock_qty
@@ -63,6 +69,11 @@ public final class GuestService {
         return balances;
     }
 
+    /**
+     * Checks that this guest session is active and requests a read-only JDBC connection.
+     * Closes the connection if setting read-only mode fails, preserving any close failure.
+     * @return a new connection that the caller must close
+     */
     private Connection openReadConnection() throws IOException, SQLException {
         sessions.requireActive(guest);
         Connection connection = DatabaseConnection.getConnection();

@@ -111,6 +111,10 @@ public class TindaTrackApplication extends Application {
         stage.getScene().setRoot(loader.getRoot());
     }
 
+    /**
+     * Rechecks the owner session before opening a destination and reports loading
+     * or access failures through the supplied screen feedback callback.
+     */
     private void navigateOwner(OwnerSession owner, String destination,
                                Consumer<String> showError, ViewAction openView) {
         try {

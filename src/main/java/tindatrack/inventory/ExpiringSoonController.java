@@ -89,6 +89,11 @@ public final class ExpiringSoonController {
         onInventory.run();
     }
 
+    /**
+     * Loads expired products and dates through today plus the selected day range.
+     * Cancels the previous task and ignores callbacks from superseded loads.
+     * Uses the captured query date for labels so all rows share one reference day.
+     */
     @FXML
     private void loadProducts() {
         LocalDate today = LocalDate.now();

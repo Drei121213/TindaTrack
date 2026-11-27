@@ -36,6 +36,10 @@ public class RegistrationController {
         this.users = users;
     }
 
+    /**
+     * Validates the form before hashing and saving the owner on a background task.
+     * Disables form actions during saving and clears the copied password in finally.
+     */
     @FXML
     private void handleCreateAccount() {
         String fullName = fullNameField.getText().strip();
@@ -87,6 +91,11 @@ public class RegistrationController {
         worker.start();
     }
 
+    /**
+     * Displays field errors for required values, name limits, a minimum six-character
+     * password, and matching confirmation. Character limits count Unicode code points.
+     * @return true only when every form check passes
+     */
     private boolean validate(String fullName, String username) {
         showError(formError, "");
         String nameMessage = requiredTextError(fullName, "Full name", 100);
