@@ -11,29 +11,31 @@
 <VBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="tindatrack.inventory.ExpiringSoonController"
-      styleClass="login-root" stylesheets="@../css/inventory.css,@../css/expiring-soon.css"
+      styleClass="page-root" stylesheets="@../css/inventory.css,@../css/expiring-soon.css"
       spacing="12">
     <Label text="Expiring Soon" styleClass="inventory-title" />
     <HBox alignment="CENTER_LEFT" spacing="8">
-        <Label text="Show items expiring within" styleClass="field-label" />
-        <ComboBox fx:id="rangeSelector" accessibleText="Expiration range in days" />
+        <Label text="Expiring within" styleClass="field-label" />
+        <ComboBox fx:id="rangeSelector" accessibleText="Expiration range in days" prefWidth="88" />
         <Label text="days" styleClass="field-label" />
         <Button fx:id="refreshButton" text="Refresh" onAction="#loadProducts"
                 styleClass="guest-button" />
     </HBox>
     <Label fx:id="rangeLabel" wrapText="true" styleClass="inventory-status" />
+    <Label text="Red: expired · Amber: expires today or within the selected range."
+           wrapText="true" styleClass="expiration-legend" />
 
     <TableView fx:id="expiringTable" editable="false" VBox.vgrow="ALWAYS"
-               styleClass="inventory-table,expiration-table">
+               minHeight="140" styleClass="inventory-table,expiration-table">
         <columns>
             <TableColumn fx:id="productName" text="Product Name" minWidth="108"
                          prefWidth="210" sortable="false" />
             <TableColumn fx:id="stock" text="Stock" minWidth="54" prefWidth="72"
                          styleClass="expiration-stock" sortable="false" />
-            <TableColumn fx:id="expirationDate" text="Expiration Date" minWidth="107"
+            <TableColumn fx:id="expirationDate" text="Expiration Date" minWidth="135"
                          prefWidth="144" sortable="false" />
-            <TableColumn fx:id="daysLeft" text="Days Left" minWidth="105" prefWidth="120"
-                         sortable="false" />
+            <TableColumn fx:id="daysLeft" text="Status / Days Left" minWidth="145" prefWidth="170"
+                         styleClass="expiration-status" sortable="false" />
         </columns>
         <placeholder>
             <Label fx:id="listMessage" text="Loading products..." wrapText="true"

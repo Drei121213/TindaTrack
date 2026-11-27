@@ -17,3 +17,24 @@
 .expiration-table .table-row-cell:expired .table-cell {
     -fx-text-fill: #8b241d;
 }
+
+.expiration-table .table-row-cell:expiring {
+    -fx-background-color: #fff5da;
+}
+
+.expiration-table .table-row-cell:expiring:selected {
+    -fx-background-color: #f4dda0;
+}
+
+.expiration-table .table-row-cell:expiring .table-cell {
+    -fx-text-fill: #684b09;
+}
+
+.expiration-table .expiration-status.table-cell {
+    -fx-font-weight: bold;
+}
+
+.expiration-legend {
+    -fx-text-fill: #52675b;
+    -fx-font-size: 13px;
+}

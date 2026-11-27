@@ -16,12 +16,14 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import tindatrack.core.SessionState.AccessDeniedException;
+import tindatrack.core.TableFormats;
 
 /** Displays expiration dates for the active owner without blocking JavaFX. */
 public final class ExpiringSoonController {
 
     private static final int DEFAULT_RANGE_DAYS = 7;
     private static final PseudoClass EXPIRED = PseudoClass.getPseudoClass("expired");
+    private static final PseudoClass EXPIRING = PseudoClass.getPseudoClass("expiring");
 
     @FXML private TableView<Product> expiringTable;
     @FXML private TableColumn<Product, String> productName;
@@ -56,6 +58,8 @@ public final class ExpiringSoonController {
                 // TableView reuses rows, so also remove the highlight when a row changes.
                 pseudoClassStateChanged(EXPIRED, !empty && product != null
                         && product.expirationDate().isBefore(referenceDate));
+                pseudoClassStateChanged(EXPIRING, !empty && product != null
+                        && !product.expirationDate().isBefore(referenceDate));
             }
         });
         productName.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().name()));
@@ -63,6 +67,8 @@ public final class ExpiringSoonController {
         expirationDate.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().expirationDate()));
         daysLeft.setCellValueFactory(cell -> new ReadOnlyStringWrapper(
                 ExpirationDates.status(cell.getValue().expirationDate(), referenceDate)));
+        TableFormats.text(productName);
+        TableFormats.date(expirationDate);
     }
 
     public void configure(ProductDao products) {

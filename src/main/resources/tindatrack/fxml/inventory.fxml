@@ -12,12 +12,14 @@
 <VBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="tindatrack.inventory.InventoryController"
-      styleClass="login-root" stylesheets="@../css/inventory.css" spacing="12">
+      styleClass="page-root" stylesheets="@../css/inventory.css" spacing="12">
     <Label text="Inventory Management" styleClass="inventory-title" />
+    <Label text="Search products, then select a row to edit or delete it. Prices are in Philippine pesos."
+           wrapText="true" styleClass="page-subtitle" />
 
     <HBox alignment="CENTER_LEFT" spacing="8">
         <TextField fx:id="searchField" promptText="Search by product name" accessibleText="Product name"
-                   onAction="#handleSearch" HBox.hgrow="ALWAYS" />
+                   minWidth="120" onAction="#handleSearch" HBox.hgrow="ALWAYS" />
         <Button fx:id="searchButton" text="Search" onAction="#handleSearch" styleClass="login-button" />
     </HBox>
 
@@ -27,18 +29,18 @@
         <Button fx:id="editProductButton" text="Edit Product" onAction="#handleEditProduct"
                 styleClass="guest-button" />
         <Button fx:id="deleteProductButton" text="Delete Product" onAction="#handleDeleteProduct"
-                styleClass="guest-button" />
+                styleClass="guest-button,danger-button" />
         <Button fx:id="refreshButton" text="Refresh" onAction="#handleRefresh" styleClass="guest-button" />
     </FlowPane>
 
     <TableView fx:id="productsTable" editable="false" VBox.vgrow="ALWAYS"
-               styleClass="inventory-table">
+               minHeight="140" styleClass="inventory-table">
         <columns>
-            <TableColumn fx:id="productId" text="Product ID" minWidth="70" prefWidth="85" />
-            <TableColumn fx:id="productName" text="Product Name" minWidth="100" prefWidth="180" />
-            <TableColumn fx:id="productPrice" text="Price (₱)" minWidth="64" prefWidth="88" />
-            <TableColumn fx:id="productStock" text="Stock" minWidth="48" prefWidth="65" />
-            <TableColumn fx:id="productExpiration" text="Expiration Date" minWidth="104" prefWidth="148" />
+            <TableColumn fx:id="productId" text="ID" minWidth="48" prefWidth="58" maxWidth="90" />
+            <TableColumn fx:id="productName" text="Product Name" minWidth="160" prefWidth="240" />
+            <TableColumn fx:id="productPrice" text="Price (₱)" minWidth="100" prefWidth="115" />
+            <TableColumn fx:id="productStock" text="Stock" minWidth="65" prefWidth="80" styleClass="numeric-column" />
+            <TableColumn fx:id="productExpiration" text="Expiration Date" minWidth="135" prefWidth="150" />
         </columns>
         <placeholder>
             <Label text="No products to display yet." styleClass="inventory-status" />

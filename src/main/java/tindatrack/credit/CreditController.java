@@ -24,6 +24,7 @@ import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import tindatrack.core.SessionState.AccessDeniedException;
+import tindatrack.core.TableFormats;
 
 /** Displays owner credit information and opens the utang/payment forms. */
 public final class CreditController {
@@ -73,8 +74,10 @@ public final class CreditController {
         historyItems.setCellValueFactory(cell -> new ReadOnlyStringWrapper(
                 cell.getValue().items() == null ? "—" : cell.getValue().items()));
         historyAmount.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().amount()));
-        formatMoney(customerBalance);
-        formatMoney(historyAmount);
+        TableFormats.money(customerBalance);
+        TableFormats.money(historyAmount);
+        TableFormats.text(customerName);
+        TableFormats.text(historyItems);
         formatDate(lastTransaction);
         formatDate(historyDate);
 
@@ -405,16 +408,6 @@ public final class CreditController {
         Thread worker = new Thread(task, name);
         worker.setDaemon(true);
         worker.start();
-    }
-
-    private static <T> void formatMoney(TableColumn<T, BigDecimal> column) {
-        column.setCellFactory(value -> new TableCell<>() {
-            @Override
-            protected void updateItem(BigDecimal amount, boolean empty) {
-                super.updateItem(amount, empty);
-                setText(empty || amount == null ? null : "₱" + amount.setScale(2).toPlainString());
-            }
-        });
     }
 
     private static <T> void formatDate(TableColumn<T, LocalDateTime> column) {

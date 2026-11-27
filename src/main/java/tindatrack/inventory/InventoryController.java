@@ -23,6 +23,7 @@ import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import tindatrack.core.SessionState.AccessDeniedException;
+import tindatrack.core.TableFormats;
 
 /** Displays stored products and handles owner inventory actions. */
 public final class InventoryController {
@@ -57,6 +58,9 @@ public final class InventoryController {
         productStock.setCellValueFactory(cell -> new ReadOnlyIntegerWrapper(cell.getValue().stockQuantity()));
         productExpiration.setCellValueFactory(cell ->
                 new ReadOnlyObjectWrapper<>(cell.getValue().expirationDate()));
+        TableFormats.money(productPrice);
+        TableFormats.date(productExpiration);
+        TableFormats.text(productName);
     }
 
     public void configure(ProductDao products) {

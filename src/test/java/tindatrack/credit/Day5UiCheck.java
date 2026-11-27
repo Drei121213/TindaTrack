@@ -451,7 +451,20 @@ public final class Day5UiCheck {
     private static void setText(Stage window, String id, String value) throws Exception { fx(() -> { ((TextInputControl)window.getScene().lookup(id)).setText(value); return null; }); }
     private static <T> CompletableFuture<T> async(Callable<T> action) {
         CompletableFuture<T> future = new CompletableFuture<>();
-        Platform.runLater(() -> { try { future.complete(action.call()); } catch (Throwable error) { future.completeExceptionally(error); } });
+        Platform.runLater(() -> {
+            try {
+                // New ScrollPane content joins the scene graph when its skin is laid out.
+                // Render before querying, just as a user sees it before the next click.
+                if (stage != null && stage.getScene() != null) {
+                    Parent root = stage.getScene().getRoot();
+                    root.applyCss();
+                    root.layout();
+                }
+                future.complete(action.call());
+            } catch (Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
         return future;
     }
     private static <T> T fx(Callable<T> action) throws Exception { return async(action).get(12, TimeUnit.SECONDS); }

@@ -18,6 +18,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import tindatrack.core.SessionState.AccessDeniedException;
+import tindatrack.core.TableFormats;
 import tindatrack.guest.GuestService.BalanceRow;
 import tindatrack.guest.GuestService.ProductRow;
 
@@ -49,6 +50,10 @@ public final class GuestController {
         productStock.setCellValueFactory(cell -> new ReadOnlyIntegerWrapper(cell.getValue().stockQuantity()));
         customerName.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().customerName()));
         customerBalance.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(cell.getValue().balance()));
+        TableFormats.money(productPrice);
+        TableFormats.money(customerBalance);
+        TableFormats.text(productName);
+        TableFormats.text(customerName);
         productsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         balancesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 

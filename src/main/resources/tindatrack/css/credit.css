@@ -1,5 +1,5 @@
 .credit-root {
-    -fx-padding: 16px;
+    -fx-padding: 20px;
 }
 
 .credit-title {
@@ -20,20 +20,30 @@
 
 .credit-status {
     -fx-text-fill: #52675b;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 
 .credit-root .combo-box,
 .login-card .combo-box,
 .login-card .date-picker {
-    -fx-pref-height: 36px;
+    -fx-pref-height: 38px;
 }
 
 .credit-payment-button {
     -fx-background-color: #e6f1ea;
     -fx-text-fill: #203d2e;
     -fx-background-radius: 6px;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
+    -fx-padding: 5px 10px;
+    -fx-cursor: hand;
+}
+
+.credit-payment-button:hover {
+    -fx-background-color: #d6e8dc;
+}
+
+.credit-table .numeric-column.table-cell {
+    -fx-font-weight: bold;
 }
 
 .credit-root .split-pane {

@@ -1,4 +1,4 @@
-"""Run credit regressions and optional navigation checks on disposable MySQL.
+"""Run credit regressions and optional navigation/layout checks on disposable MySQL.
 
 Requires Java 21, Maven, MySQL Server 8, and Python 3. No production configuration
 is read or changed. This script deliberately creates test fixtures in its own
@@ -56,9 +56,13 @@ def main():
     global REPORT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--navigation-checks", action="store_true", help="Also check Day 6 owner navigation and state.")
+    parser.add_argument("--layout-checks", action="store_true", help="Also render Day 6 layouts at two desktop sizes; includes navigation checks.")
     parser.add_argument("--report", help="Project-local JSON report path; defaults to the matching day.")
     args = parser.parse_args()
-    report_name = args.report or ("docs/testing/day6-task2-results.json" if args.navigation_checks else "docs/testing/day5-results.json")
+    if args.layout_checks:
+        args.navigation_checks = True
+    report_name = args.report or ("docs/testing/day6-task3-results.json" if args.layout_checks else
+                                  "docs/testing/day6-task2-results.json" if args.navigation_checks else "docs/testing/day5-results.json")
     REPORT = (PROJECT / report_name).resolve()
     if not REPORT.is_relative_to(PROJECT):
         raise SystemExit("The test report must stay inside the project.")
@@ -80,14 +84,15 @@ def main():
 
     TARGET.mkdir(exist_ok=True)
     report = {"executedAt": datetime.now(timezone(timedelta(hours=8))).isoformat(),
-              "scope": "Day 6 Task 2 navigation regression" if args.navigation_checks else "Day 5 acceptance",
+              "scope": "Day 6 Task 3 UI and regression checks" if args.layout_checks else
+                       "Day 6 Task 2 navigation regression" if args.navigation_checks else "Day 5 acceptance",
               "environment": "Java 21 / JavaFX / disposable MySQL 8 inside project target",
               "productionDatabaseTouched": False,
               "seedApproval": "User approved isolated test data for Day 5 Task 5.",
-              "ui": [], "database": [], "unit": []}
+              "ui": [], "database": [], "unit": [], "layout": []}
     if REPORT.is_file():
         previous = json.loads(REPORT.read_text(encoding="utf-8"))
-        history = previous.get("previousFailures", []) + [r for r in previous.get("ui", []) if r["status"] == "Failed"]
+        history = previous.get("previousFailures", []) + [r for r in previous.get("ui", []) + previous.get("layout", []) if r["status"] == "Failed"]
         report["previousFailures"] = list({r["id"]: r for r in history}.values())
     for path in (TARGET / "surefire-reports").glob("TEST-*.xml"):
         if path.name != "TEST-tindatrack.credit.CreditDatabaseTest.xml":
@@ -179,6 +184,18 @@ def main():
             command = [str(JAVA_HOME / "bin" / "java.exe"), "--module-path", fx,
                        "--add-modules", "javafx.controls,javafx.fxml", "-cp", classpath,
                        "tindatrack.credit.Day5UiCheck"]
+            if args.layout_checks:
+                print("Rendering and checking JavaFX layouts...", flush=True)
+                layout = run([*command[:-1], "tindatrack.core.Day6LayoutCheck"], env=test_env, timeout=90)
+                print(layout.stdout, flush=True)
+                for line in layout.stdout.splitlines():
+                    if line.startswith("LAYOUT\t"):
+                        _, test_id, status, actual = line.split("\t", 3)
+                        report["layout"].append({"id": test_id, "status": status, "actual": actual,
+                                                 "method": "Offscreen JavaFX / in-memory rows / no database"})
+                if layout.returncode:
+                    print(layout.stderr, flush=True)
+                    failed = True
             for phase in ("first", "reopen"):
                 print("Running JavaFX checks: " + phase, flush=True)
                 ui = run([*command, phase], cwd=root, env=test_env, timeout=120)

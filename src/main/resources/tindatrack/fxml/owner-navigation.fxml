@@ -6,13 +6,13 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="tindatrack.core.OwnerNavigationController"
-      prefWidth="220" minWidth="220" spacing="12" fillWidth="true" styleClass="login-card">
+      prefWidth="220" minWidth="220" spacing="12" fillWidth="true" styleClass="owner-sidebar">
     <Label text="TindaTrack" styleClass="registration-title" />
-    <Label fx:id="ownerName" wrapText="true" styleClass="login-subtitle" />
-    <Button fx:id="dashboardButton" text="Dashboard" onAction="#openDashboard" maxWidth="Infinity" styleClass="guest-button" />
-    <Button fx:id="inventoryButton" text="Inventory" onAction="#openInventory" maxWidth="Infinity" styleClass="guest-button" />
-    <Button fx:id="creditButton" text="Credit Management" onAction="#openCredit" maxWidth="Infinity" styleClass="guest-button" />
-    <Button fx:id="expiringButton" text="Expiring Soon" onAction="#openExpiring" maxWidth="Infinity" styleClass="guest-button" />
+    <Label fx:id="ownerName" wrapText="true" maxWidth="Infinity" styleClass="login-subtitle" />
+    <Button fx:id="dashboardButton" text="Dashboard" onAction="#openDashboard" maxWidth="Infinity" styleClass="guest-button,navigation-button" />
+    <Button fx:id="inventoryButton" text="Inventory" onAction="#openInventory" maxWidth="Infinity" styleClass="guest-button,navigation-button" />
+    <Button fx:id="creditButton" text="Credit Management" onAction="#openCredit" maxWidth="Infinity" styleClass="guest-button,navigation-button" />
+    <Button fx:id="expiringButton" text="Expiring Soon" onAction="#openExpiring" maxWidth="Infinity" styleClass="guest-button,navigation-button" />
     <Label fx:id="navigationMessage" visible="false" managed="false" wrapText="true" styleClass="registration-error" />
     <Region VBox.vgrow="ALWAYS" />
     <Button text="Logout" onAction="#logout" maxWidth="Infinity" styleClass="guest-button" />

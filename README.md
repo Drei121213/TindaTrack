@@ -3,7 +3,7 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 6, Task 2
+## Current scope: Day 6, Task 3
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -1320,6 +1320,104 @@ Manual navigation checklist:
 Only Task 2 navigation work is included. Detailed visual consistency and resolution
 testing belong to Task 3, and the other review findings remain for their approved
 tasks. No unresolved failures remain in the executed Task 2 coverage.
+
+## Day 6, Task 3: Consistent UI and smaller-window layouts
+
+The existing green theme now uses shared spacing, readable controls, aligned tables,
+and a dark green current sidebar destination. No external UI library was added.
+The existing welcome dashboard is preserved; this task adds no summary queries or cards.
+
+### Important code and layout changes
+
+- `login.css` supplies the common fonts, controls, tables, sidebar, form footer, and
+  balance summary styles. The inventory, credit, and expiration stylesheets keep
+  their module-specific appearance.
+- `TableFormats` in the existing `tindatrack.core` package contains display-only
+  cell factories. `money()` shows Philippine pesos and two decimal places while
+  preserving the underlying `BigDecimal` for sorting. `date()` displays ISO dates
+  or a dash for a missing date. `text()` adds tooltips for long names/descriptions.
+- Inventory, Credit, and Guest controllers reuse these cell factories. Stock and
+  money columns align to the right. Credit balances are bold, and the credit screen
+  explains that PHP 0.00 means no outstanding balance. Existing zero-balance payment
+  handling and completed-transaction confirmations remain in place.
+- The inventory toolbar groups Add, Edit, Delete, and Refresh. Delete uses a muted
+  red style. Credit search and transaction actions are on separate rows so the
+  search field has usable width. Existing empty-list and no-match messages remain.
+- Expiration rows use red for expired products and amber for upcoming dates in the
+  chosen range. The Status / Days Left column retains explicit text such as
+  Expired, Expires Today, and 5 Days Left. The screen includes a color legend.
+- Login can scroll at smaller heights. Registration, product, utang, and payment
+  forms use a `BorderPane`: the fields scroll in its center, while Save/Create and
+  Cancel stay visible in the bottom area. Existing field IDs, action handlers,
+  validation, and save behavior are preserved. Payment balance labels have a clear
+  green background. The registration heading is shortened to Create Owner Account
+  so it fits the smallest supported dialog.
+
+No DAO, service, schema, session, password-hashing, or transaction rules were changed.
+The main application class and Maven dependencies are unchanged for this task.
+
+### Run and verify
+
+From the nested TindaTrack project folder in PowerShell:
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+mvn verify
+mvn javafx:run
+```
+
+For the previously approved disposable MySQL fixtures plus layout checks:
+
+```powershell
+python -u scripts/test_day5.py --layout-checks
+```
+
+This option includes the Task 2 navigation checks. It stores results separately in
+`docs/testing/day6-task3-results.json` and writes 20 ignored preview images to
+`target/day6-task3-ui/`. It does not import B4_seed_data.sql or read the configured
+production credentials. The temporary MySQL server and its credentials are removed
+at the end. Existing Day 5 and Task 2 results are preserved.
+
+Final verification passed **74 ordinary unit tests, 16 isolated MySQL tests,
+26 JavaFX acceptance/navigation checks, and 20 offscreen layout checks**.
+The layout checks render the Dashboard, Inventory, Expiring Soon, Credit, Login,
+and Guest Products views for 1024 x 768 and 1366 x 768 desktop sizes, reserving
+space for window borders. Four forms are also checked at 500 x 600 and 420 x 460
+with validation messages visible. These use in-memory examples and never query a
+real database. Rendered previews were visually inspected as well.
+
+Early layout-test failures were corrected in the test harness: FXML namespace
+lookups fill controls before their skins exist, pseudo-class states are inspected
+directly, and UI queries wait for layout. The actual feature regressions passed on
+the final run. Earlier failures are retained in the report history.
+
+### Manual UI checklist
+
+1. Launch the app, check Username/Password alignment and Guest Mode, and try an
+   incorrect login to verify the error is visible. If Create Account is available,
+   open it and check its labels, field errors, and fixed Create/Cancel buttons.
+   Do not reset an existing owner account to expose registration.
+2. Log in and resize the main window within a 1024 x 768 desktop, then a
+   1366 x 768 desktop. Check that the sidebar, Logout, titles, search fields,
+   toolbars, table headers, and credit history remain readable.
+3. In Inventory, inspect peso prices, stock alignment, expiration dates, an empty
+   search result, and a long product-name tooltip. Open Add/Edit and cancel it;
+   shrink the form and confirm all fields can scroll while Save/Cancel stay visible.
+4. In Expiring Soon, choose each date range. When the database has matching rows,
+   verify red Expired and amber Expires Today/Days Left labels are readable.
+5. In Credit Management, inspect peso balances and history amounts, including a
+   zero balance if one exists. Open Record Utang and Record Payment for a customer
+   with a balance. Check field labels, errors, balance summaries, and scrolling;
+   Cancel without recording a transaction when only inspecting appearance.
+6. Log out and enter Guest Mode. Check the Products and Credit tabs, money
+   formatting, read-only controls, and Exit Guest Mode. Confirm owner navigation
+   still remembers searches/selections during the current login as in Task 2.
+
+The offscreen previews do not certify every Windows display-scaling setting;
+confirm your own desktop scaling using the checklist. The broader validation and
+error-handling review remains Task 4, and final RTM integration sign-off remains
+Task 5. No release/distribution package was prepared.
 
 ## Day 2 integration verification
 
