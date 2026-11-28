@@ -16,8 +16,11 @@ for the later approved Day 7 tasks.
 
 Day 7 additional Task 2.5.3 completed the approved one-time import: 42 products
 were inserted, with no existing matches skipped. Database comparisons confirmed
-the previous records and table structures were unchanged. GUI verification in
-Task 2.5.4 is pending. The separate manual importer never runs at startup.
+the previous records and table structures were unchanged. Task 2.5.4 verified all
+imported rows in the live Inventory view, searches, date displays, expiration
+filters, owner access and Guest Mode. Both sampled edit dialogs were canceled;
+saving edits to live products was not tested. The separate manual importer never
+runs at startup.
 The store CSV, backup, snapshots and receipt stay in the ignored `private-import/`
 folder and must remain outside installers and shared source archives. See the
 [product import guide](docs/PRODUCT_IMPORT.md) for offline validation, later

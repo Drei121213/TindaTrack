@@ -1,15 +1,23 @@
 # Manual product import
 
-## Current stage: database import completed (Day 7, Task 2.5.3)
+## Current stage: read-only application verification completed (Task 2.5.4)
 
 The owner approved the prepared list and the one-time import. All 42 products
 were committed; no existing matches were skipped. Fresh database comparisons
 confirmed the approved values, unchanged previous records and unchanged table
 structures. A subsequent read-only preview showed zero new inserts and 42 skips.
 The private completion report is `private-import/TASK-2.5.3-RESULTS.md`.
+Task 2.5.4 launched the actual application with Maven and compared all 42 imported
+rows in Inventory with the approved CSV, including displayed peso prices, stock
+and date/NULL states. Search, the 7/14/30-day expiration filters, owner access,
+logout and Guest Mode passed. Two edit dialogs loaded correctly and were canceled;
+no live edit was saved. Before/after snapshots confirmed all five tables and
+their structures were unchanged. The private report is
+`private-import/TASK-2.5.4-RESULTS.md`.
+
 The full SQL backup completed and its completion marker and table definitions
-were checked; an isolated restore test was not performed. GUI verification in
-Task 2.5.4 and Windows packaging remain pending approval.
+were checked; an isolated restore test was not performed. Live edit-save testing
+requires approval to change a real product. Windows packaging has not started.
 
 The approved store list is in the locally ignored
 `private-import/actual-store-products.csv`; its source and owner corrections are
@@ -200,4 +208,6 @@ Task 2.5.2 passed compilation, 108 ordinary tests and offline CSV validation;
 target, backup export, successful JDBC commit, exact imported values, all existing
 table contents, unchanged structures and a read-only repeat preview. No failure
 was injected into the actual store database to test rollback. A backup restore
-test and GUI checks of imported products have not been performed.
+test has not been performed. Task 2.5.4 checked the actual JavaFX views without
+modifying records. Actual edit-save behavior on an imported live product remains
+untested; opening/canceling an edit dialog does not prove persistence.
