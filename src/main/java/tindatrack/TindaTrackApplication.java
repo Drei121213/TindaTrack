@@ -15,6 +15,7 @@ import javafx.stage.Window;
 import tindatrack.authentication.LoginController;
 import tindatrack.authentication.OwnerSession;
 import tindatrack.core.OwnerHomeController;
+import tindatrack.core.DashboardDao;
 import tindatrack.core.OwnerNavigationController;
 import tindatrack.core.OwnerNavigationController.Destination;
 import tindatrack.core.SessionState;
@@ -40,6 +41,7 @@ public class TindaTrackApplication extends Application {
     private ProductDao products;
     private CreditDao credits;
     private Parent homeView;
+    private OwnerHomeController home;
     private Parent inventoryView;
     private InventoryController inventory;
     private Parent expiringView;
@@ -91,7 +93,8 @@ public class TindaTrackApplication extends Application {
     private void showOwnerHome(Stage stage, OwnerSession owner) throws IOException {
         FXMLLoader homeLoader = loadView("owner-home.fxml");
         FXMLLoader navigationLoader = loadView("owner-navigation.fxml");
-        ((OwnerHomeController) homeLoader.getController()).configure(owner.fullName());
+        home = homeLoader.getController();
+        home.configure(owner.fullName(), new DashboardDao(sessions, owner));
         sessions.begin(owner);
         if (login != null) login.deactivate();
         login = null;
@@ -148,7 +151,11 @@ public class TindaTrackApplication extends Application {
         Runnable enter = () -> { };
         Runnable leave = () -> { };
         switch (destination) {
-            case DASHBOARD -> next = homeView;
+            case DASHBOARD -> {
+                next = homeView;
+                enter = home::activate;
+                leave = home::deactivate;
+            }
             case INVENTORY -> {
                 if (inventoryView == null) {
                     FXMLLoader loader = loadView("inventory.fxml");
@@ -199,6 +206,7 @@ public class TindaTrackApplication extends Application {
         ownerLayout = null;
         navigation = null;
         homeView = null;
+        home = null;
         inventoryView = null;
         inventory = null;
         expiringView = null;

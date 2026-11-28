@@ -1,0 +1,1581 @@
+{
+  "executedAt": "2026-11-28T01:20:15.782304+08:00",
+  "source": "C:\\Users\\andrei\\Downloads\\CMSC 128 TindaTrack\\outputs\\01a1e427-b7d1-79d1-b9b2-c6a35648cfdd\\B4_Test_Cases_PR6_Updated.xlsx",
+  "sourceSha256": "739ba0fb084c7a3a916d1c571b96b4ac9bf866272eb4142c0e746acf5b744ae1",
+  "referenceModified": false,
+  "columns": {
+    "A": "Test ID",
+    "B": "Story ID",
+    "C": "Use Case",
+    "D": "Scenario",
+    "E": "Test Case",
+    "F": "Flow",
+    "G": "Original Steps",
+    "H": "Original Test Data",
+    "I": "Original Expected Results",
+    "L": "Original Type",
+    "M": "Original Method"
+  },
+  "counts": {
+    "Failed": 1,
+    "Pass": 66
+  },
+  "cases": [
+    {
+      "sourceRow": 2,
+      "specification": {
+        "A": "Login_SunnyDay",
+        "B": "SID-01",
+        "C": "UC01_Login",
+        "D": "Login",
+        "E": "Check that the owner can log in with a correct username and password",
+        "F": "Normal flow",
+        "G": "1. Open the app\n2. Enter the username\n3. Enter the password\n4. Click Login",
+        "H": "username: maggie\npassword: store123",
+        "I": "The Dashboard (SB02) opens.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "Login_SunnyDay",
+      "status": "Failed",
+      "actual": "Authentication and owner navigation succeeded. SB02 requires Total Products, Total Credits and Expiring Soon summary cards. The current home has a greeting/sidebar but no summary cards. Authentication succeeds; strict Login_SunnyDay is not fully satisfied.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "Login_SunnyDay",
+        "SB02_DashboardConformance"
+      ]
+    },
+    {
+      "sourceRow": 3,
+      "specification": {
+        "A": "Login_EmptyFields",
+        "B": "SID-01",
+        "C": "UC01_Login",
+        "D": "Login",
+        "E": "Check that empty fields are rejected",
+        "F": "Exception",
+        "G": "1. Leave the username and password empty\n2. Click Login",
+        "H": "username: (blank)\npassword: (blank)",
+        "I": "\"Please fill in all fields.\" is shown and the login screen stays.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "Login_EmptyFields",
+      "status": "Pass",
+      "actual": "Blank fields showed the specified required-fields feedback and stayed on Login.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "Login_EmptyFields"
+      ]
+    },
+    {
+      "sourceRow": 4,
+      "specification": {
+        "A": "Login_WrongPassword",
+        "B": "SID-01",
+        "C": "UC01_Login",
+        "D": "Login",
+        "E": "Check that a wrong password is rejected",
+        "F": "Exception",
+        "G": "1. Enter a correct username and a wrong password\n2. Click Login",
+        "H": "username: maggie\npassword: wrongpass",
+        "I": "\"Invalid username or password.\" is shown and the login screen stays.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "Login_WrongPassword",
+      "status": "Pass",
+      "actual": "Existing test owner rejected wrongpass and remained on login.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "Login_WrongPassword"
+      ]
+    },
+    {
+      "sourceRow": 5,
+      "specification": {
+        "A": "Login_UnknownUsername",
+        "B": "SID-01",
+        "C": "UC01_Login",
+        "D": "Login",
+        "E": "Check that a username with no account is rejected",
+        "F": "Exception",
+        "G": "1. Enter a username that does not exist\n2. Click Login",
+        "H": "username: nobody\npassword: store123",
+        "I": "\"Invalid username or password.\" is shown.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "Login_UnknownUsername",
+      "status": "Pass",
+      "actual": "nobody/store123 showed Invalid username or password.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "Login_UnknownUsername"
+      ]
+    },
+    {
+      "sourceRow": 6,
+      "specification": {
+        "A": "Login_DatabaseError",
+        "B": "SID-01",
+        "C": "UC01_Login",
+        "D": "Login",
+        "E": "Check the message when the database cannot be reached",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Enter a valid username and password\n3. Click Login",
+        "H": "username: maggie\npassword: store123",
+        "I": "\"Cannot connect to the database. Please try again.\" is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "Login_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable isolated endpoint showed the specified connection error without stopping the installed MySQL service.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "Login_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 7,
+      "specification": {
+        "A": "AddProduct_SunnyDay",
+        "B": "SID-02",
+        "C": "UC02_AddProduct",
+        "D": "Add Product",
+        "E": "Check that a new product can be added",
+        "F": "Normal flow",
+        "G": "1. Log in and open Inventory\n2. Click + add Item\n3. Enter the name, price and stock\n4. Click Save",
+        "H": "name: Skyflakes Pack\nprice: 7.50\nstock: 60",
+        "I": "The product appears in the Inventory list and a success message is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "AddProduct_SunnyDay",
+      "status": "Pass",
+      "actual": "Skyflakes Pack appeared at 7.50 with stock 60 and Product saved. feedback.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "AddProduct_SunnyDay"
+      ]
+    },
+    {
+      "sourceRow": 8,
+      "specification": {
+        "A": "AddProduct_EmptyField",
+        "B": "SID-02",
+        "C": "UC02_AddProduct",
+        "D": "Add Product",
+        "E": "Check that an empty required field is rejected",
+        "F": "Exception",
+        "G": "1. Click + add Item\n2. Leave the name empty and fill in the rest\n3. Click Save",
+        "H": "name: (blank)\nprice: 10.00\nstock: 5",
+        "I": "An error is shown under the name field and nothing is saved.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "AddProduct_EmptyField",
+      "status": "Pass",
+      "actual": "Blank name with price 10.00 and stock 5 showed an inline error and saved nothing.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "AddProduct_EmptyField"
+      ]
+    },
+    {
+      "sourceRow": 9,
+      "specification": {
+        "A": "AddProduct_InvalidPrice",
+        "B": "SID-02",
+        "C": "UC02_AddProduct",
+        "D": "Add Product",
+        "E": "Check that a price that is not greater than 0 is rejected",
+        "F": "Exception",
+        "G": "1. Click + add Item\n2. Enter an invalid price\n3. Click Save",
+        "H": "price: 0, -5, abc",
+        "I": "An error is shown under Price and nothing is saved.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "AddProduct_InvalidPrice",
+      "status": "Pass",
+      "actual": "All three specified prices (0, -5, abc) showed Price errors without saving.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "AddProduct_InvalidPrice"
+      ]
+    },
+    {
+      "sourceRow": 10,
+      "specification": {
+        "A": "AddProduct_InvalidStock",
+        "B": "SID-02",
+        "C": "UC02_AddProduct",
+        "D": "Add Product",
+        "E": "Check that a stock that is not a whole number of 0 or more is rejected",
+        "F": "Exception",
+        "G": "1. Click + add Item\n2. Enter an invalid stock\n3. Click Save",
+        "H": "stock: -1, 2.5, abc",
+        "I": "An error is shown under Stock and nothing is saved.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "AddProduct_InvalidStock",
+      "status": "Pass",
+      "actual": "All three specified stock values (-1, 2.5, abc) showed Stock errors without saving.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "AddProduct_InvalidStock"
+      ]
+    },
+    {
+      "sourceRow": 11,
+      "specification": {
+        "A": "AddProduct_DuplicateName",
+        "B": "SID-02",
+        "C": "UC02_AddProduct",
+        "D": "Add Product",
+        "E": "Check that a product name that already exists is rejected",
+        "F": "Exception",
+        "G": "1. Click + add Item\n2. Enter a name that is already in the inventory\n3. Click Save",
+        "H": "name: Lucky Me Pancit Canton\nprice: 15.00\nstock: 10",
+        "I": "\"This product already exists.\" is shown and nothing is saved.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "AddProduct_DuplicateName",
+      "status": "Pass",
+      "actual": "Duplicate Lucky Me Pancit Canton was rejected; its single existing row and stock 40 were preserved.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "AddProduct_DuplicateName"
+      ]
+    },
+    {
+      "sourceRow": 12,
+      "specification": {
+        "A": "AddProduct_Cancel",
+        "B": "SID-02",
+        "C": "UC02_AddProduct",
+        "D": "Add Product",
+        "E": "Check that Cancel closes the form without saving",
+        "F": "Alternative flow",
+        "G": "1. Click + add Item\n2. Fill in the form\n3. Click Cancel",
+        "H": "name: Skyflakes Pack\nprice: 7.50\nstock: 60",
+        "I": "The form closes and the product is not added.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "AddProduct_Cancel",
+      "status": "Pass",
+      "actual": "Canceled Skyflakes Pack / 7.50 / 60; no product was added.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "AddProduct_Cancel"
+      ]
+    },
+    {
+      "sourceRow": 13,
+      "specification": {
+        "A": "AddProduct_DatabaseError",
+        "B": "SID-02",
+        "C": "UC02_AddProduct",
+        "D": "Add Product",
+        "E": "Check the message when the product cannot be saved",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Fill in a valid form\n3. Click Save",
+        "H": "name: Skyflakes Pack\nprice: 7.50\nstock: 60",
+        "I": "\"Product was not saved. Please try again.\" is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "AddProduct_DatabaseError",
+      "status": "Pass",
+      "actual": "A valid add at an unreachable isolated endpoint showed the specified error and saved nothing.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "AddProduct_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 14,
+      "specification": {
+        "A": "SearchProduct_SunnyDay",
+        "B": "SID-03",
+        "C": "UC03_SearchProduct",
+        "D": "Search Product",
+        "E": "Check that a product can be found by part of its name",
+        "F": "Normal flow",
+        "G": "1. Open Inventory\n2. Type part of a name in the search box\n3. Click Search",
+        "H": "search text: coke",
+        "I": "Coke Mismo 8oz is shown with its price and stock.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "SearchProduct_SunnyDay",
+      "status": "Pass",
+      "actual": "coke found Coke Mismo 8oz with price 12.00 and stock 24.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SearchProduct_SunnyDay"
+      ]
+    },
+    {
+      "sourceRow": 15,
+      "specification": {
+        "A": "SearchProduct_NotCaseSensitive",
+        "B": "SID-03",
+        "C": "UC03_SearchProduct",
+        "D": "Search Product",
+        "E": "Check that the search ignores uppercase and lowercase",
+        "F": "Normal flow",
+        "G": "1. Open Inventory\n2. Type the text in capital letters\n3. Click Search",
+        "H": "search text: PANCIT",
+        "I": "Lucky Me Pancit Canton is shown.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "SearchProduct_NotCaseSensitive",
+      "status": "Pass",
+      "actual": "PANCIT found Lucky Me Pancit Canton.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SearchProduct_NotCaseSensitive"
+      ]
+    },
+    {
+      "sourceRow": 16,
+      "specification": {
+        "A": "SearchProduct_EmptyBox",
+        "B": "SID-03",
+        "C": "UC03_SearchProduct",
+        "D": "Search Product",
+        "E": "Check that an empty search box shows the full list",
+        "F": "Alternative flow",
+        "G": "1. Open Inventory\n2. Leave the search box empty\n3. Click Search",
+        "H": "search text: (blank)",
+        "I": "The complete product list is shown.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "SearchProduct_EmptyBox",
+      "status": "Pass",
+      "actual": "Blank search displayed the complete database product list.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SearchProduct_EmptyBox"
+      ]
+    },
+    {
+      "sourceRow": 17,
+      "specification": {
+        "A": "SearchProduct_NoMatch",
+        "B": "SID-03",
+        "C": "UC03_SearchProduct",
+        "D": "Search Product",
+        "E": "Check the message when no product matches",
+        "F": "Exception",
+        "G": "1. Open Inventory\n2. Type a name that does not exist\n3. Click Search",
+        "H": "search text: xyz123",
+        "I": "\"No products found.\" is shown.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "SearchProduct_NoMatch",
+      "status": "Pass",
+      "actual": "xyz123 displayed No products found. with an empty table.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SearchProduct_NoMatch"
+      ]
+    },
+    {
+      "sourceRow": 18,
+      "specification": {
+        "A": "SearchProduct_Speed",
+        "B": "SID-03",
+        "C": "UC03_SearchProduct",
+        "D": "Search Product",
+        "E": "NFR_2: Check that the search takes 2 seconds or less for 1000 products",
+        "F": "NFR",
+        "G": "1. Load 1000 sample products\n2. Type a letter in the search box\n3. Click Search and time the result",
+        "H": "1000 products; search text: a",
+        "I": "The results appear in 2 seconds or less.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "SearchProduct_Speed",
+      "status": "Pass",
+      "actual": "Search a with exactly 1000 products completed within 2 seconds in all three local query-to-layout measurements.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SearchProduct_Speed"
+      ]
+    },
+    {
+      "sourceRow": 19,
+      "specification": {
+        "A": "SearchProduct_DatabaseError",
+        "B": "SID-03",
+        "C": "UC03_SearchProduct",
+        "D": "Search Product",
+        "E": "Check the message when the search fails",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Type a name\n3. Click Search",
+        "H": "search text: coke",
+        "I": "\"Search failed. Please try again.\" is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "SearchProduct_DatabaseError",
+      "status": "Pass",
+      "actual": "coke search at an unreachable isolated endpoint displayed the specified search error.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SearchProduct_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 20,
+      "specification": {
+        "A": "DeleteProduct_SunnyDay",
+        "B": "SID-04",
+        "C": "UC04_DeleteProduct",
+        "D": "Delete Product",
+        "E": "Check that a product is deleted after confirming",
+        "F": "Normal flow",
+        "G": "1. Open Inventory\n2. Click Delete beside a product\n3. Click Delete in the confirmation",
+        "H": "product: Safeguard Soap",
+        "I": "The product is removed from the list.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "DeleteProduct_SunnyDay",
+      "status": "Pass",
+      "actual": "Confirmed Safeguard Soap deletion removed exactly its row and preserved Coke.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "DeleteProduct_SunnyDay"
+      ]
+    },
+    {
+      "sourceRow": 21,
+      "specification": {
+        "A": "DeleteProduct_Cancel",
+        "B": "SID-04",
+        "C": "UC04_DeleteProduct",
+        "D": "Delete Product",
+        "E": "Check that Cancel keeps the product",
+        "F": "Alternative flow",
+        "G": "1. Click Delete beside a product\n2. Click Cancel in the confirmation",
+        "H": "product: Safeguard Soap",
+        "I": "The dialog closes and the product is still in the list.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "DeleteProduct_Cancel",
+      "status": "Pass",
+      "actual": "Canceled deletion; Safeguard Soap remained in the list and database.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "DeleteProduct_Cancel"
+      ]
+    },
+    {
+      "sourceRow": 22,
+      "specification": {
+        "A": "DeleteProduct_CreditRecordsUnchanged",
+        "B": "SID-04",
+        "C": "UC04_DeleteProduct",
+        "D": "Delete Product",
+        "E": "Check that deleting a product does not change credit records",
+        "F": "Normal flow",
+        "G": "1. Delete a product that appears in a customer's credit items\n2. Open the Credit list",
+        "H": "product: Lucky Me Pancit Canton\ncustomer: Aling Nena (balance 250.00)",
+        "I": "Aling Nena's credit record and balance (250.00) stay the same.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "DeleteProduct_CreditRecordsUnchanged",
+      "status": "Pass",
+      "actual": "Deleted Lucky Me Pancit Canton; Aling Nena remained at 250.00 with identical credit history.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "DeleteProduct_CreditRecordsUnchanged"
+      ]
+    },
+    {
+      "sourceRow": 23,
+      "specification": {
+        "A": "DeleteProduct_DatabaseError",
+        "B": "SID-04",
+        "C": "UC04_DeleteProduct",
+        "D": "Delete Product",
+        "E": "Check the message when the product cannot be deleted",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Click Delete and confirm",
+        "H": "product: Safeguard Soap",
+        "I": "\"Product was not deleted. Please try again.\" is shown and the product stays.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "DeleteProduct_DatabaseError",
+      "status": "Pass",
+      "actual": "Deletion at an unreachable isolated endpoint showed the specified message and preserved Safeguard Soap.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "DeleteProduct_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 24,
+      "specification": {
+        "A": "UpdateProduct_SunnyDay",
+        "B": "SID-05",
+        "C": "UC05_UpdateProduct",
+        "D": "Update Product",
+        "E": "Check that the price and stock can be updated",
+        "F": "Normal flow",
+        "G": "1. Open Inventory\n2. Click Edit beside a product\n3. Change the price and stock\n4. Click Save",
+        "H": "product: Coke Mismo 8oz\nnew price: 13.00\nnew stock: 30",
+        "I": "The Inventory list shows the new price and stock.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "UpdateProduct_SunnyDay",
+      "status": "Pass",
+      "actual": "Coke Mismo 8oz refreshed to price 13.00 and stock 30.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "UpdateProduct_SunnyDay"
+      ]
+    },
+    {
+      "sourceRow": 25,
+      "specification": {
+        "A": "UpdateProduct_EmptyField",
+        "B": "SID-05",
+        "C": "UC05_UpdateProduct",
+        "D": "Update Product",
+        "E": "Check that an empty price or stock is rejected",
+        "F": "Exception",
+        "G": "1. Click Edit beside a product\n2. Clear the price\n3. Click Save",
+        "H": "price: (blank)",
+        "I": "An error is shown under Price and the old values are kept.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "UpdateProduct_EmptyField",
+      "status": "Pass",
+      "actual": "Blank Price showed a field error and preserved Coke at 12.00.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "UpdateProduct_EmptyField"
+      ]
+    },
+    {
+      "sourceRow": 26,
+      "specification": {
+        "A": "UpdateProduct_InvalidValues",
+        "B": "SID-05",
+        "C": "UC05_UpdateProduct",
+        "D": "Update Product",
+        "E": "Check that an invalid price or stock is rejected",
+        "F": "Exception",
+        "G": "1. Click Edit beside a product\n2. Enter invalid values\n3. Click Save",
+        "H": "price: 0\nstock: abc",
+        "I": "Errors are shown under the fields and the old values are kept.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "UpdateProduct_InvalidValues",
+      "status": "Pass",
+      "actual": "Price 0 and stock abc showed both field errors and kept the old values.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "UpdateProduct_InvalidValues"
+      ]
+    },
+    {
+      "sourceRow": 27,
+      "specification": {
+        "A": "UpdateProduct_Cancel",
+        "B": "SID-05",
+        "C": "UC05_UpdateProduct",
+        "D": "Update Product",
+        "E": "Check that Cancel keeps the old values",
+        "F": "Alternative flow",
+        "G": "1. Click Edit beside a product\n2. Change the price\n3. Click Cancel",
+        "H": "new price: 20.00",
+        "I": "The form closes and the old price is kept.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "UpdateProduct_Cancel",
+      "status": "Pass",
+      "actual": "Canceled price 20.00; Coke stayed at 12.00.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "UpdateProduct_Cancel"
+      ]
+    },
+    {
+      "sourceRow": 28,
+      "specification": {
+        "A": "UpdateProduct_DatabaseError",
+        "B": "SID-05",
+        "C": "UC05_UpdateProduct",
+        "D": "Update Product",
+        "E": "Check the message when the changes cannot be saved",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Edit a product\n3. Click Save",
+        "H": "new price: 13.00",
+        "I": "\"Changes were not saved. Please try again.\" is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "UpdateProduct_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable isolated endpoint rejected the update with the specified message; old price remained.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "UpdateProduct_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 29,
+      "specification": {
+        "A": "ViewExpiring_SunnyDay",
+        "B": "SID-06",
+        "C": "UC06_ViewExpiringProducts",
+        "D": "View Expiring Products",
+        "E": "Check that products near expiry are listed, nearest first",
+        "F": "Normal flow",
+        "G": "1. Log in\n2. Click Expiring Soon",
+        "H": "Egg (expires in 5 days)\nNescafe 3-in-1 (expires in 20 days)",
+        "I": "Egg (per piece) is listed with 5 days left. Nescafe is not listed. The list is sorted by nearest expiry.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "ViewExpiring_SunnyDay",
+      "status": "Pass",
+      "actual": "Seven-day range listed Egg with 5 Days Left, excluded Nescafe at +20 days, and sorted dates nearest first (including expired rows).",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "ViewExpiring_SunnyDay"
+      ]
+    },
+    {
+      "sourceRow": 30,
+      "specification": {
+        "A": "ViewExpiring_ChangeRange",
+        "B": "SID-06",
+        "C": "UC06_ViewExpiringProducts",
+        "D": "View Expiring Products",
+        "E": "Check that a longer day range shows more products",
+        "F": "Alternative flow",
+        "G": "1. Click Expiring Soon\n2. Change the range to 30 days",
+        "H": "range: 30 days",
+        "I": "Nescafe 3-in-1 now appears in the list.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "ViewExpiring_ChangeRange",
+      "status": "Pass",
+      "actual": "Changing to 30 days included Nescafe 3-in-1 at +20 days.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "ViewExpiring_ChangeRange"
+      ]
+    },
+    {
+      "sourceRow": 31,
+      "specification": {
+        "A": "ViewExpiring_ExpiredHighlighted",
+        "B": "SID-06",
+        "C": "UC06_ViewExpiringProducts",
+        "D": "View Expiring Products",
+        "E": "Check that expired products are highlighted in red",
+        "F": "Normal flow",
+        "G": "1. Click Expiring Soon",
+        "H": "Bread Loaf (expired 2 days ago)",
+        "I": "Bread Loaf is listed and highlighted in red.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "ViewExpiring_ExpiredHighlighted",
+      "status": "Pass",
+      "actual": "Bread Loaf at -2 days appeared with the expired state and the configured red row background.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "ViewExpiring_ExpiredHighlighted"
+      ]
+    },
+    {
+      "sourceRow": 32,
+      "specification": {
+        "A": "ViewExpiring_NoExpiryNotListed",
+        "B": "SID-06",
+        "C": "UC06_ViewExpiringProducts",
+        "D": "View Expiring Products",
+        "E": "Check that products without an expiration date are not listed",
+        "F": "Normal flow",
+        "G": "1. Click Expiring Soon",
+        "H": "Safeguard Soap (no expiration date)",
+        "I": "Safeguard Soap is not in the list.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "ViewExpiring_NoExpiryNotListed",
+      "status": "Pass",
+      "actual": "Safeguard Soap had NULL expiration and was excluded from the list.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "ViewExpiring_NoExpiryNotListed"
+      ]
+    },
+    {
+      "sourceRow": 33,
+      "specification": {
+        "A": "ViewExpiring_NoProducts",
+        "B": "SID-06",
+        "C": "UC06_ViewExpiringProducts",
+        "D": "View Expiring Products",
+        "E": "Check the message when no product is near expiry",
+        "F": "Exception",
+        "G": "1. Make sure no product expires within 7 days\n2. Click Expiring Soon",
+        "H": "range: 7 days",
+        "I": "\"No products expiring soon.\" is shown.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "ViewExpiring_NoProducts",
+      "status": "Pass",
+      "actual": "With no dated products, seven-day filtering showed exactly No products expiring soon.; fixtures were restored.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "ViewExpiring_NoProducts"
+      ]
+    },
+    {
+      "sourceRow": 34,
+      "specification": {
+        "A": "ViewExpiring_DatabaseError",
+        "B": "SID-06",
+        "C": "UC06_ViewExpiringProducts",
+        "D": "View Expiring Products",
+        "E": "Check the message when the list cannot be loaded",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Click Expiring Soon",
+        "H": "-",
+        "I": "\"Cannot load the list. Please try again.\" is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "ViewExpiring_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable isolated endpoint showed the specified expiration-list error.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "ViewExpiring_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 35,
+      "specification": {
+        "A": "SetExpiration_SunnyDay",
+        "B": "SID-07",
+        "C": "UC07_SetExpirationDate",
+        "D": "Set Expiration Date",
+        "E": "Check that a future expiration date is saved",
+        "F": "Normal flow",
+        "G": "1. Click + add Item\n2. Fill in the form and pick a date\n3. Click Save",
+        "H": "expiration date: 2027-06-30",
+        "I": "The date is saved and shown in the Expiry column.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "SetExpiration_SunnyDay",
+      "status": "Pass",
+      "actual": "2027-06-30 was saved and displayed for Coke Mismo 8oz.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SetExpiration_SunnyDay"
+      ]
+    },
+    {
+      "sourceRow": 36,
+      "specification": {
+        "A": "SetExpiration_NoExpiration",
+        "B": "SID-07",
+        "C": "UC07_SetExpirationDate",
+        "D": "Set Expiration Date",
+        "E": "Check that a product can be saved without an expiration date",
+        "F": "Alternative flow",
+        "G": "1. Click + add Item\n2. Fill in the form\n3. Tick No expiration date\n4. Click Save",
+        "H": "No expiration date: ticked",
+        "I": "The date field is disabled and the product is saved with no expiry.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "SetExpiration_NoExpiration",
+      "status": "Pass",
+      "actual": "Ticking No expiration date disabled the date field and saved NULL.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SetExpiration_NoExpiration"
+      ]
+    },
+    {
+      "sourceRow": 37,
+      "specification": {
+        "A": "SetExpiration_InvalidDate",
+        "B": "SID-07",
+        "C": "UC07_SetExpirationDate",
+        "D": "Set Expiration Date",
+        "E": "Check that an invalid date is rejected",
+        "F": "Exception",
+        "G": "1. Type an invalid date\n2. Click Save",
+        "H": "expiration date: 2026-13-45",
+        "I": "\"Please enter a valid date.\" is shown and nothing is saved.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "SetExpiration_InvalidDate",
+      "status": "Pass",
+      "actual": "2026-13-45 showed Please enter a valid date. and preserved the existing NULL date.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SetExpiration_InvalidDate"
+      ]
+    },
+    {
+      "sourceRow": 38,
+      "specification": {
+        "A": "SetExpiration_PastDateYes",
+        "B": "SID-07",
+        "C": "UC07_SetExpirationDate",
+        "D": "Set Expiration Date",
+        "E": "Check that a past date is saved when the owner confirms",
+        "F": "Exception",
+        "G": "1. Enter a date that has already passed\n2. Click Save\n3. Click Yes in the question",
+        "H": "expiration date: 2026-01-01",
+        "I": "\"This date has already passed. Save anyway?\" is asked and the date is saved after Yes.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "SetExpiration_PastDateYes",
+      "status": "Pass",
+      "actual": "2026-01-01 was saved only after the specified confirmation and Yes.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SetExpiration_PastDateYes"
+      ]
+    },
+    {
+      "sourceRow": 39,
+      "specification": {
+        "A": "SetExpiration_PastDateNo",
+        "B": "SID-07",
+        "C": "UC07_SetExpirationDate",
+        "D": "Set Expiration Date",
+        "E": "Check that a past date is not saved when the owner clicks No",
+        "F": "Exception",
+        "G": "1. Enter a date that has already passed\n2. Click Save\n3. Click No in the question",
+        "H": "expiration date: 2026-01-01",
+        "I": "The owner returns to the form and the date is not saved.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "SetExpiration_PastDateNo",
+      "status": "Pass",
+      "actual": "2026-01-01 prompted for confirmation; No returned to the form without saving.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "SetExpiration_PastDateNo"
+      ]
+    },
+    {
+      "sourceRow": 40,
+      "specification": {
+        "A": "RecordUtang_SunnyDay",
+        "B": "SID-08",
+        "C": "UC08_RecordUtang",
+        "D": "Record Utang",
+        "E": "Check that a credit purchase is recorded and added to the balance",
+        "F": "Normal flow",
+        "G": "1. Open Credit\n2. Click + Record Utang\n3. Select the customer, enter items and amount\n4. Click Save",
+        "H": "customer: Aling Nena (balance 250.00)\nitems: 2 Pancit Canton\namount: 30.00",
+        "I": "Aling Nena's balance becomes 280.00.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "RecordUtang_SunnyDay",
+      "status": "Pass",
+      "actual": "Recorded 2 Pancit Canton for 30.00; list refreshed to 280.00, history saved, stock stayed 40, and repeat Save was disabled.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordUtang_SunnyDay"
+      ]
+    },
+    {
+      "sourceRow": 41,
+      "specification": {
+        "A": "RecordUtang_NewCustomer",
+        "B": "SID-08",
+        "C": "UC08_RecordUtang",
+        "D": "Record Utang",
+        "E": "Check that a new customer is created",
+        "F": "Alternative flow",
+        "G": "1. Click + Record Utang\n2. Type a customer name that is not in the list\n3. Enter items and amount\n4. Click Save",
+        "H": "customer: Aling Rosa\nitems: Sardines\namount: 45.00",
+        "I": "Aling Rosa is created and her balance is 45.00.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "RecordUtang_NewCustomer",
+      "status": "Pass",
+      "actual": "The New customer choice created one Aling Rosa with balance 45.00 and one Sardines purchase.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordUtang_NewCustomer"
+      ]
+    },
+    {
+      "sourceRow": 42,
+      "specification": {
+        "A": "RecordUtang_EmptyFields",
+        "B": "SID-08",
+        "C": "UC08_RecordUtang",
+        "D": "Record Utang",
+        "E": "Check that an empty customer or amount is rejected",
+        "F": "Exception",
+        "G": "1. Click + Record Utang\n2. Leave the customer or the amount empty\n3. Click Save",
+        "H": "amount: (blank)",
+        "I": "An error is shown under the empty field and nothing is saved.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "RecordUtang_EmptyFields",
+      "status": "Pass",
+      "actual": "Blank name and blank amount showed field errors; no purchase or customer was inserted.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordUtang_EmptyFields"
+      ]
+    },
+    {
+      "sourceRow": 43,
+      "specification": {
+        "A": "RecordUtang_InvalidAmount",
+        "B": "SID-08",
+        "C": "UC08_RecordUtang",
+        "D": "Record Utang",
+        "E": "Check that an amount that is not greater than 0 is rejected",
+        "F": "Exception",
+        "G": "1. Click + Record Utang\n2. Enter an invalid amount\n3. Click Save",
+        "H": "amount: 0, -10, abc",
+        "I": "\"Please enter a valid amount.\" is shown.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "RecordUtang_InvalidAmount",
+      "status": "Pass",
+      "actual": "0, -10, abc and 1.001 showed Please enter a valid amount.; nothing was saved.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordUtang_InvalidAmount"
+      ]
+    },
+    {
+      "sourceRow": 44,
+      "specification": {
+        "A": "RecordUtang_Cancel",
+        "B": "SID-08",
+        "C": "UC08_RecordUtang",
+        "D": "Record Utang",
+        "E": "Check that Cancel saves nothing",
+        "F": "Alternative flow",
+        "G": "1. Click + Record Utang\n2. Fill in the form\n3. Click Cancel",
+        "H": "amount: 30.00",
+        "I": "The form closes and the balance stays the same.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "RecordUtang_Cancel",
+      "status": "Pass",
+      "actual": "Filled a 30.00 purchase and canceled; the form closed, balance stayed 250.00 and history did not change.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordUtang_Cancel"
+      ]
+    },
+    {
+      "sourceRow": 45,
+      "specification": {
+        "A": "RecordUtang_DatabaseError",
+        "B": "SID-08",
+        "C": "UC08_RecordUtang",
+        "D": "Record Utang",
+        "E": "Check the message when the utang cannot be saved",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Fill in the form\n3. Click Save",
+        "H": "amount: 30.00",
+        "I": "\"Utang was not saved. Please try again.\" is shown and the balance stays the same.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "RecordUtang_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable temporary endpoint produced Utang was not saved. Please try again.; form stayed open and balance stayed 250.00.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordUtang_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 46,
+      "specification": {
+        "A": "RecordUtang_SavedImmediately",
+        "B": "SID-08",
+        "C": "UC08_RecordUtang",
+        "D": "Record Utang",
+        "E": "NFR_4: Check that a saved transaction is not lost when the app is closed",
+        "F": "NFR",
+        "G": "1. Record an utang and click Save\n2. Close the app without any other action\n3. Open the app and the Credit list",
+        "H": "customer: Aling Nena\namount: 30.00",
+        "I": "The transaction and the new balance are still there.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "RecordUtang_SavedImmediately",
+      "status": "Pass",
+      "actual": "A separate JVM relaunched, signed in, and displayed Aling Nena at 280.00 with the saved 30.00 utang.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordUtang_SavedImmediately"
+      ]
+    },
+    {
+      "sourceRow": 47,
+      "specification": {
+        "A": "RecordPayment_PartialPayment",
+        "B": "SID-09",
+        "C": "UC09_RecordPayment",
+        "D": "Record Payment",
+        "E": "Check that a partial payment reduces the balance",
+        "F": "Normal flow",
+        "G": "1. Open Credit\n2. Click Record Payment beside a customer\n3. Enter the amount\n4. Click Save",
+        "H": "customer: Aling Nena (balance 250.00)\npayment: 50.00",
+        "I": "The new balance is 200.00.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "RecordPayment_PartialPayment",
+      "status": "Pass",
+      "actual": "Paid 50.00 from 250.00; the list refreshed to 200.00 with a separate payment and success message.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordPayment_PartialPayment"
+      ]
+    },
+    {
+      "sourceRow": 48,
+      "specification": {
+        "A": "RecordPayment_FullPayment",
+        "B": "SID-09",
+        "C": "UC09_RecordPayment",
+        "D": "Record Payment",
+        "E": "Check that a full payment makes the balance 0",
+        "F": "Normal flow",
+        "G": "1. Click Record Payment beside a customer\n2. Enter the full balance\n3. Click Save",
+        "H": "customer: Aling Nena (balance 250.00)\npayment: 250.00",
+        "I": "The new balance is 0.00.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "RecordPayment_FullPayment",
+      "status": "Pass",
+      "actual": "Paid 250.00; the stored and displayed balance became 0.00.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordPayment_FullPayment"
+      ]
+    },
+    {
+      "sourceRow": 49,
+      "specification": {
+        "A": "RecordPayment_EmptyOrZero",
+        "B": "SID-09",
+        "C": "UC09_RecordPayment",
+        "D": "Record Payment",
+        "E": "Check that an empty or zero amount is rejected",
+        "F": "Exception",
+        "G": "1. Click Record Payment\n2. Leave the amount empty or enter 0\n3. Click Save",
+        "H": "payment: (blank), 0",
+        "I": "\"Please enter a valid amount.\" is shown.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "RecordPayment_EmptyOrZero",
+      "status": "Pass",
+      "actual": "Blank, zero, negative and nonnumeric payments showed the expected error without saving.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordPayment_EmptyOrZero"
+      ]
+    },
+    {
+      "sourceRow": 50,
+      "specification": {
+        "A": "RecordPayment_MoreThanBalance",
+        "B": "SID-09",
+        "C": "UC09_RecordPayment",
+        "D": "Record Payment",
+        "E": "Check that a payment larger than the balance is rejected",
+        "F": "Exception",
+        "G": "1. Click Record Payment\n2. Enter more than the balance\n3. Click Save",
+        "H": "customer: Aling Nena (balance 250.00)\npayment: 300.00",
+        "I": "\"Payment cannot be more than the balance.\" is shown and nothing is saved.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "RecordPayment_MoreThanBalance",
+      "status": "Pass",
+      "actual": "300.00 against 250.00 showed Payment cannot be more than the balance.; no payment was saved.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordPayment_MoreThanBalance"
+      ]
+    },
+    {
+      "sourceRow": 51,
+      "specification": {
+        "A": "RecordPayment_NoBalance",
+        "B": "SID-09",
+        "C": "UC09_RecordPayment",
+        "D": "Record Payment",
+        "E": "Check the message when the customer has no balance",
+        "F": "Exception",
+        "G": "1. Click Record Payment beside a customer with no balance",
+        "H": "customer: Kuya Jun (balance 0.00)",
+        "I": "\"This customer has no balance.\" is shown and the form does not open.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "RecordPayment_NoBalance",
+      "status": "Pass",
+      "actual": "Kuya Jun at 0.00 showed This customer has no balance. without opening the payment form.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordPayment_NoBalance"
+      ]
+    },
+    {
+      "sourceRow": 52,
+      "specification": {
+        "A": "RecordPayment_Cancel",
+        "B": "SID-09",
+        "C": "UC09_RecordPayment",
+        "D": "Record Payment",
+        "E": "Check that Cancel saves nothing",
+        "F": "Alternative flow",
+        "G": "1. Click Record Payment\n2. Enter an amount\n3. Click Cancel",
+        "H": "payment: 50.00",
+        "I": "The form closes and the balance stays the same.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "RecordPayment_Cancel",
+      "status": "Pass",
+      "actual": "Canceled a filled 50.00 payment; the form closed, balance stayed 250.00 and payment count stayed unchanged.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordPayment_Cancel"
+      ]
+    },
+    {
+      "sourceRow": 53,
+      "specification": {
+        "A": "RecordPayment_DatabaseError",
+        "B": "SID-09",
+        "C": "UC09_RecordPayment",
+        "D": "Record Payment",
+        "E": "Check the message when the payment cannot be saved",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Enter a valid payment\n3. Click Save",
+        "H": "payment: 50.00",
+        "I": "\"Payment was not saved. Please try again.\" is shown and the balance stays the same.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "RecordPayment_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable temporary endpoint produced Payment was not saved. Please try again.; form stayed open and balance stayed 250.00.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordPayment_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 54,
+      "specification": {
+        "A": "RecordPayment_TwoDecimals",
+        "B": "SID-09",
+        "C": "UC09_RecordPayment",
+        "D": "Record Payment",
+        "E": "NFR_5: Check that money is shown with 2 decimals and the balance is never negative",
+        "F": "NFR",
+        "G": "1. Pay 49.50 on a balance of 250.00\n2. Try to pay again more than the new balance",
+        "H": "payment: 49.50 then 300.00",
+        "I": "The balance is shown as 200.50. The second payment is rejected, so the balance is never negative.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "RecordPayment_TwoDecimals",
+      "status": "Pass",
+      "actual": "49.50 reduced 250.00 to 200.50; the displayed balance retained two decimals and the next 300.00 was rejected.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "RecordPayment_TwoDecimals"
+      ]
+    },
+    {
+      "sourceRow": 55,
+      "specification": {
+        "A": "GuestMode_SunnyDay",
+        "B": "SID-10",
+        "C": "UC10_GuestMode",
+        "D": "Guest Mode",
+        "E": "Check that a guest can view products without logging in",
+        "F": "Normal flow",
+        "G": "1. Open the app\n2. Click Continue as Guest",
+        "H": "-",
+        "I": "Products are shown with price and stock, with a \"View only\" banner.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "GuestMode_SunnyDay",
+      "status": "Pass",
+      "actual": "Guest products displayed only product, peso price and stock with a View only banner.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "GuestMode_SunnyDay"
+      ]
+    },
+    {
+      "sourceRow": 56,
+      "specification": {
+        "A": "GuestMode_SearchProduct",
+        "B": "SID-10",
+        "C": "UC10_GuestMode",
+        "D": "Guest Mode",
+        "E": "Check that a guest can search a product",
+        "F": "Alternative flow",
+        "G": "1. In Guest Mode, type a name in the search box\n2. Click Search",
+        "H": "search text: safeguard",
+        "I": "Safeguard Soap is shown with its price and stock.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "GuestMode_SearchProduct",
+      "status": "Pass",
+      "actual": "safeguard found Safeguard Soap at 38.00 with stock 12.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "GuestMode_SearchProduct"
+      ]
+    },
+    {
+      "sourceRow": 57,
+      "specification": {
+        "A": "GuestMode_SearchNoMatch",
+        "B": "SID-10",
+        "C": "UC10_GuestMode",
+        "D": "Guest Mode",
+        "E": "Check the message when no product matches",
+        "F": "Exception",
+        "G": "1. In Guest Mode, search for a name that does not exist",
+        "H": "search text: xyz123",
+        "I": "\"No products found.\" is shown.",
+        "L": "Module",
+        "M": "Automated"
+      },
+      "id": "GuestMode_SearchNoMatch",
+      "status": "Pass",
+      "actual": "xyz123 showed No products found. in the guest table.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "GuestMode_SearchNoMatch"
+      ]
+    },
+    {
+      "sourceRow": 58,
+      "specification": {
+        "A": "GuestMode_CreditTab",
+        "B": "SID-10",
+        "C": "UC10_GuestMode",
+        "D": "Guest Mode",
+        "E": "Check that a guest can view customer balances",
+        "F": "Normal flow",
+        "G": "1. In Guest Mode, click the Credit (Utang) tab",
+        "H": "-",
+        "I": "Customers and their balances are shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "GuestMode_CreditTab",
+      "status": "Pass",
+      "actual": "Guest Credit tab showed the same committed customer names/balances as the owner, using only the two permitted columns.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "GuestMode_CreditTab"
+      ]
+    },
+    {
+      "sourceRow": 59,
+      "specification": {
+        "A": "GuestMode_ExitGuestMode",
+        "B": "SID-10",
+        "C": "UC10_GuestMode",
+        "D": "Guest Mode",
+        "E": "Check that Exit Guest Mode returns to the login screen",
+        "F": "Alternative flow",
+        "G": "1. In Guest Mode, click Exit Guest Mode",
+        "H": "-",
+        "I": "The login screen is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "GuestMode_ExitGuestMode",
+      "status": "Pass",
+      "actual": "Exit Guest Mode returned to Login and cleared the guest session.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "GuestMode_ExitGuestMode"
+      ]
+    },
+    {
+      "sourceRow": 60,
+      "specification": {
+        "A": "GuestMode_NoOwnerFunctions",
+        "B": "SID-10",
+        "C": "UC10_GuestMode",
+        "D": "Guest Mode",
+        "E": "NFR_3: Check that a guest cannot reach owner functions",
+        "F": "NFR",
+        "G": "1. In Guest Mode, look for add, edit, delete and record buttons\n2. Try to open the owner screens",
+        "H": "-",
+        "I": "No such buttons exist and the owner screens cannot be opened.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "GuestMode_NoOwnerFunctions",
+      "status": "Pass",
+      "actual": "Guest UI had no owner controls; owner credit route and both write services rejected guest access; exit cleared pending rows.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "GuestMode_NoOwnerFunctions"
+      ]
+    },
+    {
+      "sourceRow": 61,
+      "specification": {
+        "A": "GuestMode_DatabaseError",
+        "B": "SID-10",
+        "C": "UC10_GuestMode",
+        "D": "Guest Mode",
+        "E": "Check the message when the data cannot be loaded",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Click Continue as Guest",
+        "H": "-",
+        "I": "\"Cannot load the data. Please try again.\" is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "GuestMode_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable isolated endpoint showed the specified safe guest error.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "GuestMode_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 62,
+      "specification": {
+        "A": "CreateAccount_SunnyDay",
+        "B": "SID-11",
+        "C": "UC11_CreateAccount",
+        "D": "Create Account",
+        "E": "Check that the owner can create an account",
+        "F": "Normal flow",
+        "G": "1. Open the app with no owner account\n2. Click Create Account\n3. Fill in all fields\n4. Click Create Account",
+        "H": "full name: Maggie Dadivalos\nusername: maggie\npassword: store123\nconfirm: store123",
+        "I": "The pop-up closes and \"Account created. You can now log in.\" is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "CreateAccount_SunnyDay",
+      "status": "Pass",
+      "actual": "Created Maggie Dadivalos / maggie / store123 through the real FXML form; it closed and confirmed account creation.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "CreateAccount_SunnyDay"
+      ]
+    },
+    {
+      "sourceRow": 63,
+      "specification": {
+        "A": "CreateAccount_EmptyField",
+        "B": "SID-11",
+        "C": "UC11_CreateAccount",
+        "D": "Create Account",
+        "E": "Check that an empty field is rejected",
+        "F": "Exception",
+        "G": "1. Click Create Account\n2. Leave one field empty\n3. Click Create Account",
+        "H": "username: (blank)",
+        "I": "An error is shown under the empty field and no account is saved.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "CreateAccount_EmptyField",
+      "status": "Pass",
+      "actual": "Blank username showed an inline error and created no account.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "CreateAccount_EmptyField"
+      ]
+    },
+    {
+      "sourceRow": 64,
+      "specification": {
+        "A": "CreateAccount_ShortPassword",
+        "B": "SID-11",
+        "C": "UC11_CreateAccount",
+        "D": "Create Account",
+        "E": "Check that a short password is rejected",
+        "F": "Exception",
+        "G": "1. Click Create Account\n2. Enter a password with fewer than 6 characters\n3. Click Create Account",
+        "H": "password: abc12",
+        "I": "\"Password must be at least 6 characters.\" is shown.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "CreateAccount_ShortPassword",
+      "status": "Pass",
+      "actual": "abc12 was rejected with the specified six-character message; no owner was saved.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "CreateAccount_ShortPassword"
+      ]
+    },
+    {
+      "sourceRow": 65,
+      "specification": {
+        "A": "CreateAccount_PasswordMismatch",
+        "B": "SID-11",
+        "C": "UC11_CreateAccount",
+        "D": "Create Account",
+        "E": "Check that different passwords are rejected",
+        "F": "Exception",
+        "G": "1. Click Create Account\n2. Enter different values in Password and Confirm Password\n3. Click Create Account",
+        "H": "password: store123\nconfirm: store321",
+        "I": "\"Passwords do not match.\" is shown.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "CreateAccount_PasswordMismatch",
+      "status": "Pass",
+      "actual": "store123/store321 showed Passwords do not match. and saved no owner.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "CreateAccount_PasswordMismatch"
+      ]
+    },
+    {
+      "sourceRow": 66,
+      "specification": {
+        "A": "CreateAccount_Cancel",
+        "B": "SID-11",
+        "C": "UC11_CreateAccount",
+        "D": "Create Account",
+        "E": "Check that Cancel saves nothing",
+        "F": "Alternative flow",
+        "G": "1. Click Create Account\n2. Fill in the fields\n3. Click Cancel",
+        "H": "-",
+        "I": "The pop-up closes and no account is saved.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "CreateAccount_Cancel",
+      "status": "Pass",
+      "actual": "Filled and canceled the owner form; users remained empty.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "CreateAccount_Cancel"
+      ]
+    },
+    {
+      "sourceRow": 67,
+      "specification": {
+        "A": "CreateAccount_DatabaseError",
+        "B": "SID-11",
+        "C": "UC11_CreateAccount",
+        "D": "Create Account",
+        "E": "Check the message when the account cannot be saved",
+        "F": "Exception",
+        "G": "1. Stop the MySQL service\n2. Fill in valid fields\n3. Click Create Account",
+        "H": "-",
+        "I": "\"Account was not created. Please try again.\" is shown.",
+        "L": "System",
+        "M": "Manual"
+      },
+      "id": "CreateAccount_DatabaseError",
+      "status": "Pass",
+      "actual": "An unreachable isolated endpoint showed the specified account-save error and saved no owner.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "CreateAccount_DatabaseError"
+      ],
+      "executionNote": "An unreachable disposable endpoint simulated database unavailability; the installed MySQL service was not stopped."
+    },
+    {
+      "sourceRow": 68,
+      "specification": {
+        "A": "CreateAccount_PasswordHashed",
+        "B": "SID-11",
+        "C": "UC11_CreateAccount",
+        "D": "Create Account",
+        "E": "NFR_3: Check that the password is stored hashed",
+        "F": "NFR",
+        "G": "1. Create an account\n2. Open the users table in MySQL\n3. Look at the password_hash value",
+        "H": "password: store123",
+        "I": "The stored value is a hash and is not the text store123.",
+        "L": "Unit",
+        "M": "Automated"
+      },
+      "id": "CreateAccount_PasswordHashed",
+      "status": "Pass",
+      "actual": "The stored value was not plaintext and verified using PasswordHasher; the hash was not printed.",
+      "method": "Automated JavaFX / isolated MySQL",
+      "evidence": [
+        "CreateAccount_PasswordHashed"
+      ]
+    }
+  ],
+  "manualAcceptance": {
+    "status": "Not Run",
+    "reason": "Target-user acceptance and Windows display-scaling checks require a human session; no manual Pass is claimed."
+  }
+}

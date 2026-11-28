@@ -26,6 +26,7 @@ import tindatrack.TindaTrackApplication;
 import tindatrack.authentication.OwnerSession;
 import tindatrack.authentication.UserDao;
 import tindatrack.core.DatabaseConnection;
+import tindatrack.core.DashboardDao;
 import tindatrack.core.PasswordHasher;
 import tindatrack.core.SessionState;
 import tindatrack.core.OwnerNavigationController.Destination;
@@ -41,11 +42,13 @@ public final class Day5UiCheck {
     private static SessionState sessions;
     private static OwnerSession owner;
     private static CreditDao dao;
+    private static final boolean INTEGRATION = "true".equals(System.getenv("TINDATRACK_INTEGRATION_CHECKS"));
+    private static final boolean DASHBOARD_CHECKS = "true".equals(System.getenv("TINDATRACK_DASHBOARD_CHECKS"));
 
     public static void main(String[] args) throws Exception {
         IsolatedDatabase.verify();
         boolean reopen = args.length > 0 && args[0].equals("reopen");
-        if (!reopen) {
+        if (!reopen && !INTEGRATION) {
             UserDao users = new UserDao(new SessionState());
             check(users.createOwner("Maggie", "maggie", PasswordHasher.hash("store123".toCharArray()))
                     == UserDao.CreateResult.CREATED, "Test owner could not be created");
@@ -59,6 +62,7 @@ public final class Day5UiCheck {
                 app.start(stage);
                 return null;
             });
+            if (!reopen && INTEGRATION) registrationB4();
             if (!reopen) runCase("Login_WrongPassword", () -> {
                 setText(stage, "#usernameField", "maggie");
                 setText(stage, "#passwordField", "wrongpass");
@@ -66,6 +70,7 @@ public final class Day5UiCheck {
                 waitFor(() -> !button(stage, "Login").isDisabled());
                 check(text(stage, "#feedbackLabel").equals("Invalid username or password."), "Wrong-password feedback differed");
             }, "Existing test owner rejected wrongpass and remained on login.");
+            if (!reopen && INTEGRATION) loginB4();
             login();
             if (reopen) {
                 runCase("RecordUtang_SavedImmediately", () -> {
@@ -81,6 +86,8 @@ public final class Day5UiCheck {
                 return;
             }
             result("Login_SunnyDay", "Pass", "maggie/store123 opened the signed-in owner Home, then Credit Management.");
+            if (INTEGRATION) dashboardConformance();
+            if (DASHBOARD_CHECKS) dashboardRegression();
             runCase("RecordUtang_SunnyDay", () -> {
                 resetNena(); openUtang("Aling Nena");
                 setText(form(), "#amountField", "30.00");
@@ -188,6 +195,14 @@ public final class Day5UiCheck {
                 runCase("Day6_LogoutScreenRecovery", Day5UiCheck::logoutScreenRecovery,
                         "A missing compiled login FXML cleared the session and showed Retry Login; restoring the file allowed a fresh login in the same window.");
             }
+            if (INTEGRATION) {
+                inventoryB4();
+                expirationB4();
+                benchmarkB4();
+                runCase("Day6_ContinuousCreditFlow", Day5UiCheck::continuousCreditFlow,
+                        "One customer moved from 250.00 to 280.00 after utang, 230.00 after partial payment, and 0.00 after full payment; history reconciled.");
+                guestB4();
+            }
             runCase("Day5_InventoryExpirationRegression", Day5UiCheck::inventoryRegression,
                     "Owner inventory add, search, edit and confirmed delete worked; Expiring Soon listed the expired fixture and navigation preserved the session.");
             runCase("GuestMode_CreditTab", Day5UiCheck::guestBalances,
@@ -212,6 +227,389 @@ public final class Day5UiCheck {
             });
             Platform.exit();
         }
+    }
+
+    private static void unavailable(CheckedAction action) throws Exception {
+        // This process runs from the verified disposable server's configuration directory.
+        Path config = Path.of("config/database.properties"); byte[] original = Files.readAllBytes(config);
+        try (SocketChannel endpoint = SocketChannel.open()) {
+            endpoint.bind(new InetSocketAddress("127.0.0.1", 0));
+            int port = ((InetSocketAddress)endpoint.getLocalAddress()).getPort();
+            Files.writeString(config, "db.url=jdbc:mysql://127.0.0.1:" + port + "/tindatrack\ndb.username=test\ndb.password=test\n");
+            action.run();
+        } finally { Files.write(config, original); }
+    }
+
+    private static void registerForm() throws Exception {
+        waitFor(() -> stage.getScene().lookup("#createAccountLink") != null
+                && stage.getScene().lookup("#createAccountLink").isVisible());
+        async(() -> { ((Hyperlink)stage.getScene().lookup("#createAccountLink")).fire(); return null; });
+        waitFor(() -> findForm() != null);
+        setText(form(), "#fullNameField", "Maggie Dadivalos"); setText(form(), "#usernameField", "maggie");
+        setText(form(), "#passwordField", "store123"); setText(form(), "#confirmationField", "store123");
+    }
+
+    private static void cancelRegistration() throws Exception {
+        pressForm("#cancelButton"); waitFor(() -> findForm() == null);
+    }
+
+    private static void registrationB4() throws Exception {
+        runCase("CreateAccount_Cancel", () -> {
+            registerForm(); cancelRegistration(); check(number("SELECT COUNT(*) FROM users") == 0, "Cancel created an owner");
+        }, "Filled and canceled the owner form; users remained empty.");
+        runCase("CreateAccount_EmptyField", () -> {
+            registerForm(); setText(form(), "#usernameField", ""); pressForm("#createButton");
+            check(visible(form(), "#usernameError"), "Missing username error");
+            check(number("SELECT COUNT(*) FROM users") == 0, "Blank username saved"); cancelRegistration();
+        }, "Blank username showed an inline error and created no account.");
+        runCase("CreateAccount_ShortPassword", () -> {
+            registerForm(); setText(form(), "#passwordField", "abc12"); setText(form(), "#confirmationField", "abc12");
+            pressForm("#createButton"); check(text(form(), "#passwordError").equals("Password must be at least 6 characters."), "Short-password feedback differed");
+            check(number("SELECT COUNT(*) FROM users") == 0, "Short password saved"); cancelRegistration();
+        }, "abc12 was rejected with the specified six-character message; no owner was saved.");
+        runCase("CreateAccount_PasswordMismatch", () -> {
+            registerForm(); setText(form(), "#confirmationField", "store321"); pressForm("#createButton");
+            check(text(form(), "#confirmationError").equals("Passwords do not match."), "Mismatch feedback differed");
+            check(number("SELECT COUNT(*) FROM users") == 0, "Mismatch saved"); cancelRegistration();
+        }, "store123/store321 showed Passwords do not match. and saved no owner.");
+        runCase("CreateAccount_DatabaseError", () -> {
+            registerForm(); Stage dialog = form();
+            unavailable(() -> { pressForm("#createButton"); waitFor(() -> !((Button)dialog.getScene().lookup("#createButton")).isDisabled());
+                check(text(dialog, "#formError").equals("Account was not created. Please try again."), "Account database error differed"); });
+            check(number("SELECT COUNT(*) FROM users") == 0, "Failed registration saved"); cancelRegistration();
+        }, "An unreachable isolated endpoint showed the specified account-save error and saved no owner.");
+        runCase("CreateAccount_SunnyDay", () -> {
+            registerForm(); Stage dialog = form(); pressForm("#createButton"); waitFor(() -> !dialog.isShowing());
+            check(text(stage, "#feedbackLabel").equals("Account created. You can now log in."), "Missing registration success");
+            check(number("SELECT COUNT(*) FROM users WHERE username='maggie'") == 1, "Owner creation differs");
+        }, "Created Maggie Dadivalos / maggie / store123 through the real FXML form; it closed and confirmed account creation.");
+        runCase("CreateAccount_PasswordHashed", () -> {
+            try (Connection c = DatabaseConnection.getConnection(); PreparedStatement s = c.prepareStatement("SELECT password_hash FROM users WHERE username=?")) {
+                s.setString(1, "maggie"); try (ResultSet r = s.executeQuery()) {
+                    check(r.next(), "Owner missing"); String hash = r.getString(1);
+                    check(!hash.equals("store123") && PasswordHasher.verify("store123".toCharArray(), hash), "Stored password is not a usable hash");
+                }
+            }
+        }, "The stored value was not plaintext and verified using PasswordHasher; the hash was not printed.");
+    }
+
+    private static void loginB4() throws Exception {
+        runCase("Login_EmptyFields", () -> {
+            setText(stage, "#usernameField", ""); setText(stage, "#passwordField", ""); click("Login");
+            check(text(stage, "#feedbackLabel").equals("Please fill in all fields."), "Blank login feedback differed");
+        }, "Blank fields showed the specified required-fields feedback and stayed on Login.");
+        runCase("Login_UnknownUsername", () -> {
+            setText(stage, "#usernameField", "nobody"); setText(stage, "#passwordField", "store123"); click("Login");
+            waitFor(() -> !button(stage, "Login").isDisabled());
+            check(text(stage, "#feedbackLabel").equals("Invalid username or password."), "Unknown-user feedback differed");
+        }, "nobody/store123 showed Invalid username or password.");
+        runCase("Login_DatabaseError", () -> unavailable(() -> {
+            setText(stage, "#usernameField", "maggie"); setText(stage, "#passwordField", "store123"); click("Login");
+            waitFor(() -> !button(stage, "Login").isDisabled());
+            check(text(stage, "#feedbackLabel").equals("Cannot connect to the database. Please try again."), "Login connection feedback differed");
+        }), "An unreachable isolated endpoint showed the specified connection error without stopping the installed MySQL service.");
+    }
+
+    private static void dashboardConformance() throws Exception {
+        runCase("SB02_DashboardConformance", () -> {
+            click("Dashboard"); waitDashboard();
+            check(fx(() -> stage.getScene().getRoot().lookupAll(".label").stream()
+                    .filter(n -> n instanceof Label).map(n -> ((Label)n).getText()).toList()
+                    .containsAll(List.of("Total Products", "Total Credits", "Expiring Soon"))), "SB02 card labels are missing");
+            assertDashboardTotals();
+        }, "SB02 contains all three summary cards; displayed product count, outstanding peso credit total and expired/next-seven-day count matched independent SQL reads.");
+        click("Credit Management"); waitList();
+    }
+
+    private static void waitDashboard() throws Exception {
+        waitFor(() -> stage.getScene().lookup("#dashboardRefreshButton") != null
+                && !((Button)stage.getScene().lookup("#dashboardRefreshButton")).isDisabled());
+    }
+
+    private static void assertDashboardTotals() throws Exception {
+        check(text(stage, "#totalProducts").equals(Integer.toString(number("SELECT COUNT(*) FROM products"))), "Dashboard product count differs");
+        try (Connection c = DatabaseConnection.getConnection(); PreparedStatement s = c.prepareStatement("SELECT COALESCE(SUM(balance),0.00) FROM customers"); ResultSet r = s.executeQuery()) {
+            check(r.next(), "Missing credit total");
+            check(text(stage, "#totalCredits").equals("₱" + r.getBigDecimal(1).setScale(2).toPlainString()), "Dashboard credit total differs");
+        }
+        try (Connection c = DatabaseConnection.getConnection(); PreparedStatement s = c.prepareStatement(
+                "SELECT COUNT(*) FROM products WHERE expiration_date IS NOT NULL AND expiration_date<=?")) {
+            s.setObject(1, LocalDate.now().plusDays(7));
+            try (ResultSet r = s.executeQuery()) { check(r.next() && text(stage, "#expiringProducts").equals(Long.toString(r.getLong(1))), "Dashboard expiration total differs"); }
+        }
+    }
+
+    private static void refreshDashboard() throws Exception {
+        fx(() -> { ((Button)stage.getScene().lookup("#dashboardRefreshButton")).fire(); return null; });
+        waitDashboard();
+    }
+
+    private static void dashboardRegression() throws Exception {
+        runCase("Day7_DashboardEmptyStore", () -> {
+            try {
+                IsolatedDatabase.execute("DELETE FROM payments");
+                IsolatedDatabase.execute("DELETE FROM credit_transactions");
+                IsolatedDatabase.execute("DELETE FROM customers");
+                IsolatedDatabase.execute("DELETE FROM products");
+                click("Dashboard"); waitDashboard();
+                check(text(stage,"#totalProducts").equals("0") && text(stage,"#totalCredits").equals("₱0.00")
+                        && text(stage,"#expiringProducts").equals("0"), "Empty store did not show real zero totals");
+                assertDashboardTotals();
+            } finally { IsolatedDatabase.resetCustomers(); IsolatedDatabase.seedProducts(); }
+            refreshDashboard();
+        }, "An empty isolated store displayed 0 products, ₱0.00 outstanding credit and 0 expiring items; the approved fixtures were restored.");
+        runCase("Day7_DashboardRefreshOnReturn", () -> {
+            ProductDao products = new ProductDao(sessions, owner);
+            try {
+                click("Inventory"); waitList();
+                check(products.addProduct("Dashboard Test Product", new BigDecimal("1.00"),0,LocalDate.now().plusDays(7))==ProductDao.AddResult.ADDED,"Dashboard fixture add failed");
+                new CreditService(dao).recordUtang(new UtangRequest(customer("Aling Nena").id(),"Aling Nena","Dashboard refresh test",new BigDecimal("10.00"),LocalDate.now()));
+                click("Dashboard"); waitDashboard(); assertDashboardTotals();
+                check(text(stage,"#totalCredits").equals("₱260.00"),"Dashboard did not include committed utang");
+                click("Credit Management"); waitList(); pay("Aling Nena","3.00");
+                click("Dashboard"); waitDashboard(); assertDashboardTotals();
+                check(text(stage,"#totalCredits").equals("₱257.00"),"Dashboard did not reflect payment");
+            } finally {
+                for (Product p : products.findByName("Dashboard Test Product")) products.deleteProduct(p);
+                IsolatedDatabase.resetNena();
+            }
+            refreshDashboard(); assertDashboardTotals();
+        }, "Returning from Inventory/Credit refreshed all totals after a product, 10.00 utang and 3.00 payment; isolated fixtures were restored.");
+        runCase("Day7_DashboardRetry", () -> {
+            unavailable(() -> {
+                refreshDashboard();
+                check(text(stage,"#dashboardStatus").equals("Cannot load the store summary. Please try again."),"Dashboard error was unclear");
+                check(text(stage,"#totalProducts").equals("—") && text(stage,"#totalCredits").equals("—")
+                        && text(stage,"#expiringProducts").equals("—"),"A failed read displayed misleading totals");
+            });
+            refreshDashboard(); assertDashboardTotals();
+            check(text(stage,"#dashboardStatus").equals("Store summary updated."),"Dashboard retry did not recover");
+        }, "Connection failure left dashes and a safe retry message; Refresh Summary recovered and displayed the database totals.");
+        runCase("Day7_DashboardLeaveDuringLoad", () -> {
+            Parent oldHome = fx(() -> (Parent)((javafx.scene.layout.BorderPane)stage.getScene().getRoot()).getCenter());
+            fx(() -> { ((Button)stage.getScene().lookup("#dashboardRefreshButton")).fire(); button(stage,"Inventory").fire(); return null; });
+            waitList(); Thread.sleep(150);
+            check(fx(() -> ((Label)oldHome.lookup("#totalProducts")).getText().equals("—")),"Obsolete summary callback repainted the departed Dashboard");
+            click("Dashboard"); waitDashboard(); assertDashboardTotals();
+            fx(() -> {
+                Parent root=stage.getScene().getRoot(); root.applyCss(); root.layout();
+                var image=root.snapshot(null,null);
+                var output=new java.awt.image.BufferedImage((int)image.getWidth(),(int)image.getHeight(),java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                for(int y=0;y<output.getHeight();y++) for(int x=0;x<output.getWidth();x++) output.setRGB(x,y,image.getPixelReader().getArgb(x,y));
+                javax.imageio.ImageIO.write(output,"png",Path.of(System.getenv("TINDATRACK_TEST_TARGET"),"day7-task2-dashboard.png").toFile());
+                return null;
+            });
+        }, "Leaving during a load cleared the old cards and ignored obsolete results; reopening refreshed correctly in the same window.");
+        click("Credit Management"); waitList();
+    }
+
+    private static void resetB4Products() throws Exception {
+        IsolatedDatabase.verify();
+        IsolatedDatabase.execute("DELETE FROM products");
+        try (Connection c = DatabaseConnection.getConnection(); PreparedStatement s = c.prepareStatement(
+                "INSERT INTO products(name,price,stock_qty,expiration_date) VALUES(?,?,?,?)")) {
+            Object[][] rows = {
+                {"Lucky Me Pancit Canton", "15.00", 40, LocalDate.of(2027,3,1)},
+                {"Coke Mismo 8oz", "12.00", 24, LocalDate.of(2027,1,15)},
+                {"Safeguard Soap", "38.00", 12, null},
+                {"Egg (per piece)", "10.00", 30, LocalDate.now().plusDays(5)},
+                {"Nescafe 3-in-1", "8.00", 100, LocalDate.now().plusDays(20)},
+                {"Bread Loaf", "55.00", 10, LocalDate.now().minusDays(2)},
+                {"Expired test item", "12.00", 24, LocalDate.now().minusDays(1)}
+            };
+            for (Object[] row : rows) {
+                s.setString(1, (String)row[0]); s.setBigDecimal(2, new BigDecimal((String)row[1]));
+                s.setInt(3, (Integer)row[2]); s.setObject(4, row[3], java.sql.Types.DATE); s.addBatch();
+            }
+            s.executeBatch();
+        }
+    }
+
+    private static void inventorySearch(String search) throws Exception {
+        setText(stage, "#searchField", search); click("Search"); waitList();
+    }
+    private static Product listedProduct() throws Exception {
+        return fx(() -> (Product)((TableView<?>)stage.getScene().lookup("#productsTable")).getItems().getFirst());
+    }
+    private static int listedProducts() throws Exception { return fx(() -> ((TableView<?>)stage.getScene().lookup("#productsTable")).getItems().size()); }
+    private static void newProduct(String name, String price, String stock) throws Exception {
+        async(() -> { button(stage, "Add Product").fire(); return null; }); waitFor(() -> findForm() != null);
+        setText(form(), "#nameField", name); setText(form(), "#priceField", price); setText(form(), "#stockField", stock);
+    }
+    private static void deleteListed(String decision) throws Exception {
+        selectFirstProduct(); async(() -> { button(stage, "Delete Product").fire(); return null; }); waitFor(() -> findForm() != null);
+        fx(() -> { button(findForm(), decision).fire(); return null; }); waitFor(() -> findForm() == null); waitList();
+    }
+
+    private static void inventoryB4() throws Exception {
+        resetB4Products(); click("Inventory"); waitList(); inventorySearch("");
+        runCase("AddProduct_Cancel", () -> { newProduct("Skyflakes Pack", "7.50", "60"); cancel();
+            check(number("SELECT COUNT(*) FROM products WHERE name='Skyflakes Pack'") == 0, "Canceled add saved");
+        }, "Canceled Skyflakes Pack / 7.50 / 60; no product was added.");
+        runCase("AddProduct_EmptyField", () -> { newProduct("", "10.00", "5"); pressForm("#saveButton");
+            check(visible(form(), "#nameError"), "Missing name error"); cancel();
+        }, "Blank name with price 10.00 and stock 5 showed an inline error and saved nothing.");
+        runCase("AddProduct_InvalidPrice", () -> { newProduct("Skyflakes Pack", "0", "60");
+            for (String value : List.of("0", "-5", "abc")) { setText(form(), "#priceField", value); pressForm("#saveButton"); check(visible(form(), "#priceError"), "Invalid price accepted"); }
+            cancel(); check(number("SELECT COUNT(*) FROM products WHERE name='Skyflakes Pack'") == 0, "Invalid price saved");
+        }, "All three specified prices (0, -5, abc) showed Price errors without saving.");
+        runCase("AddProduct_InvalidStock", () -> { newProduct("Skyflakes Pack", "7.50", "-1");
+            for (String value : List.of("-1", "2.5", "abc")) { setText(form(), "#stockField", value); pressForm("#saveButton"); check(visible(form(), "#stockError"), "Invalid stock accepted"); }
+            cancel(); check(number("SELECT COUNT(*) FROM products WHERE name='Skyflakes Pack'") == 0, "Invalid stock saved");
+        }, "All three specified stock values (-1, 2.5, abc) showed Stock errors without saving.");
+        runCase("AddProduct_DuplicateName", () -> { newProduct("Lucky Me Pancit Canton", "15.00", "10"); pressForm("#saveButton");
+            waitFor(() -> !((Button)findForm().getScene().lookup("#saveButton")).isDisabled());
+            check(text(form(), "#nameError").equals("This product already exists."), "Duplicate feedback differed"); cancel();
+            check(number("SELECT COUNT(*) FROM products WHERE name='Lucky Me Pancit Canton' AND stock_qty=40") == 1, "Duplicate changed existing product");
+        }, "Duplicate Lucky Me Pancit Canton was rejected; its single existing row and stock 40 were preserved.");
+        runCase("AddProduct_DatabaseError", () -> { newProduct("Skyflakes Pack", "7.50", "60"); Stage dialog = form();
+            unavailable(() -> { pressForm("#saveButton"); waitFor(() -> !((Button)dialog.getScene().lookup("#saveButton")).isDisabled());
+                check(text(dialog, "#formError").equals("Product was not saved. Please try again."), "Add failure feedback differed"); }); cancel();
+            check(number("SELECT COUNT(*) FROM products WHERE name='Skyflakes Pack'") == 0, "Failed add saved");
+        }, "A valid add at an unreachable isolated endpoint showed the specified error and saved nothing.");
+        runCase("AddProduct_SunnyDay", () -> { newProduct("Skyflakes Pack", "7.50", "60"); save();
+            check(text(stage, "#statusLabel").equals("Product saved."), "Missing add success"); inventorySearch("Skyflakes Pack");
+            Product p = listedProduct(); check(p.name().equals("Skyflakes Pack") && p.price().equals(new BigDecimal("7.50")) && p.stockQuantity()==60, "Saved product differs");
+        }, "Skyflakes Pack appeared at 7.50 with stock 60 and Product saved. feedback.");
+        runCase("SearchProduct_SunnyDay", () -> { inventorySearch("coke"); check(listedProduct().name().equals("Coke Mismo 8oz") && listedProduct().price().equals(new BigDecimal("12.00")) && listedProduct().stockQuantity()==24, "Coke search differs"); }, "coke found Coke Mismo 8oz with price 12.00 and stock 24.");
+        runCase("SearchProduct_NotCaseSensitive", () -> { inventorySearch("PANCIT"); check(listedProduct().name().equals("Lucky Me Pancit Canton"), "Case-insensitive search differs"); }, "PANCIT found Lucky Me Pancit Canton.");
+        runCase("SearchProduct_EmptyBox", () -> { inventorySearch(""); check(listedProducts()==number("SELECT COUNT(*) FROM products"), "Empty search omitted products"); }, "Blank search displayed the complete database product list.");
+        runCase("SearchProduct_NoMatch", () -> { inventorySearch("xyz123"); check(listedProducts()==0 && fx(() -> ((Label)((TableView<?>)stage.getScene().lookup("#productsTable")).getPlaceholder()).getText()).equals("No products found."), "No-match placeholder differed"); }, "xyz123 displayed No products found. with an empty table.");
+        runCase("SearchProduct_DatabaseError", () -> unavailable(() -> { inventorySearch("coke"); check(text(stage, "#statusLabel").startsWith("Search failed. Please try again."), "Search failure feedback differed"); }), "coke search at an unreachable isolated endpoint displayed the specified search error.");
+        inventorySearch("Coke Mismo 8oz"); selectFirstProduct();
+        runCase("UpdateProduct_EmptyField", () -> { openEditProduct(); setText(form(), "#priceField", ""); pressForm("#saveButton"); check(visible(form(), "#priceError"), "Empty price accepted"); cancel(); check(listedProduct().price().equals(new BigDecimal("12.00")), "Invalid edit changed price"); }, "Blank Price showed a field error and preserved Coke at 12.00.");
+        runCase("UpdateProduct_InvalidValues", () -> { selectFirstProduct(); openEditProduct(); setText(form(), "#priceField", "0"); setText(form(), "#stockField", "abc"); pressForm("#saveButton"); check(visible(form(), "#priceError") && visible(form(), "#stockError"), "Invalid update errors missing"); cancel(); check(listedProduct().price().equals(new BigDecimal("12.00")) && listedProduct().stockQuantity()==24, "Invalid edit changed data"); }, "Price 0 and stock abc showed both field errors and kept the old values.");
+        runCase("UpdateProduct_Cancel", () -> { selectFirstProduct(); openEditProduct(); setText(form(), "#priceField", "20.00"); cancel(); check(listedProduct().price().equals(new BigDecimal("12.00")), "Cancel changed price"); }, "Canceled price 20.00; Coke stayed at 12.00.");
+        runCase("UpdateProduct_DatabaseError", () -> { selectFirstProduct(); openEditProduct(); setText(form(), "#priceField", "13.00"); Stage dialog = form();
+            unavailable(() -> { pressForm("#saveButton"); waitFor(() -> !((Button)dialog.getScene().lookup("#saveButton")).isDisabled()); check(text(dialog, "#formError").equals("Changes were not saved. Please try again."), "Update failure feedback differed"); }); cancel();
+            check(new ProductDao(sessions, owner).findByName("Coke Mismo 8oz").getFirst().price().equals(new BigDecimal("12.00")), "Failed update changed row");
+        }, "An unreachable isolated endpoint rejected the update with the specified message; old price remained.");
+        runCase("UpdateProduct_SunnyDay", () -> { selectFirstProduct(); openEditProduct(); setText(form(), "#priceField", "13.00"); setText(form(), "#stockField", "30"); save(); check(listedProduct().price().equals(new BigDecimal("13.00")) && listedProduct().stockQuantity()==30, "Update values differ"); }, "Coke Mismo 8oz refreshed to price 13.00 and stock 30.");
+        inventorySearch("Safeguard Soap");
+        runCase("DeleteProduct_Cancel", () -> { deleteListed("Cancel"); check(listedProducts()==1 && listedProduct().name().equals("Safeguard Soap"), "Cancel removed Safeguard"); }, "Canceled deletion; Safeguard Soap remained in the list and database.");
+        runCase("DeleteProduct_DatabaseError", () -> { unavailable(() -> { deleteListed("Delete"); check(text(stage, "#statusLabel").equals("Product was not deleted. Please try again."), "Delete error differed"); }); check(new ProductDao(sessions, owner).findByName("Safeguard Soap").size()==1, "Failed delete removed row"); }, "Deletion at an unreachable isolated endpoint showed the specified message and preserved Safeguard Soap.");
+        runCase("DeleteProduct_SunnyDay", () -> { int before = number("SELECT COUNT(*) FROM products"); refresh(); deleteListed("Delete"); check(listedProducts()==0 && number("SELECT COUNT(*) FROM products")==before-1 && new ProductDao(sessions, owner).findByName("Coke Mismo 8oz").size()==1, "Delete affected wrong rows"); }, "Confirmed Safeguard Soap deletion removed exactly its row and preserved Coke.");
+        runCase("DeleteProduct_CreditRecordsUnchanged", () -> { resetNena(); var history = dao.findHistory(customer("Aling Nena").id()); inventorySearch("Lucky Me Pancit Canton"); deleteListed("Delete"); check(customer("Aling Nena").balance().equals(new BigDecimal("250.00")) && dao.findHistory(customer("Aling Nena").id()).equals(history), "Product delete changed credit"); }, "Deleted Lucky Me Pancit Canton; Aling Nena remained at 250.00 with identical credit history.");
+        resetB4Products(); refresh();
+    }
+
+    private static void expirationRange(int days) throws Exception {
+        fx(() -> { @SuppressWarnings("unchecked") ComboBox<Integer> range = (ComboBox<Integer>)stage.getScene().lookup("#rangeSelector"); range.setValue(days); return null; });
+        waitList();
+    }
+    private static boolean expiringContains(String name) throws Exception {
+        return fx(() -> ((TableView<?>)stage.getScene().lookup("#expiringTable")).getItems().stream().anyMatch(p -> ((Product)p).name().equals(name)));
+    }
+    private static void setProductDate(LocalDate date) throws Exception {
+        fx(() -> { ((DatePicker)findForm().getScene().lookup("#expirationField")).setValue(date); return null; });
+    }
+    private static void confirmProductDate(String decision) throws Exception {
+        Stage dialog = form(); async(() -> { ((Button)dialog.getScene().lookup("#saveButton")).fire(); return null; });
+        waitFor(() -> pastDateAlert() != null);
+        check(fx(() -> ((DialogPane)pastDateAlert().getScene().getRoot()).getContentText()).equals("This date has already passed. Save anyway?"), "Past-date prompt differed");
+        fx(() -> { button(pastDateAlert(), decision).fire(); return null; }); waitFor(() -> pastDateAlert() == null);
+        if (decision.equals("Yes")) { waitFor(() -> !dialog.isShowing()); waitList(); }
+    }
+
+    private static void expirationB4() throws Exception {
+        click("Expiring Soon"); waitList(); expirationRange(7);
+        runCase("ViewExpiring_SunnyDay", () -> {
+            check(expiringContains("Egg (per piece)") && !expiringContains("Nescafe 3-in-1"), "Seven-day membership differs");
+            fx(() -> { TableView<?> table=(TableView<?>)stage.getScene().lookup("#expiringTable");
+                LocalDate previous=null;
+                for (Object item : table.getItems()) { Product p=(Product)item; check(previous==null || !p.expirationDate().isBefore(previous), "Expiry sort differs"); previous=p.expirationDate();
+                    if(p.name().equals("Egg (per piece)")) check(table.getColumns().get(3).getCellData(table.getItems().indexOf(item)).equals("5 Days Left"), "Egg days left differs"); }
+                return null;
+            });
+        }, "Seven-day range listed Egg with 5 Days Left, excluded Nescafe at +20 days, and sorted dates nearest first (including expired rows).");
+        runCase("ViewExpiring_ChangeRange", () -> { expirationRange(30); check(expiringContains("Nescafe 3-in-1"), "Thirty-day range omitted Nescafe"); }, "Changing to 30 days included Nescafe 3-in-1 at +20 days.");
+        runCase("ViewExpiring_ExpiredHighlighted", () -> check(fx(() -> stage.getScene().getRoot().lookupAll(".table-row-cell").stream().anyMatch(n ->
+                n instanceof TableRow<?> row && row.getItem() instanceof Product p && p.name().equals("Bread Loaf")
+                && row.getPseudoClassStates().contains(javafx.css.PseudoClass.getPseudoClass("expired"))
+                && row.getBackground().getFills().getFirst().getFill().equals(javafx.scene.paint.Color.web("#fde9e7")))), "Bread was not highlighted red"),
+                "Bread Loaf at -2 days appeared with the expired state and the configured red row background.");
+        runCase("ViewExpiring_NoExpiryNotListed", () -> check(!expiringContains("Safeguard Soap") && number("SELECT COUNT(*) FROM products WHERE name='Safeguard Soap' AND expiration_date IS NULL")==1, "NULL expiration was listed"), "Safeguard Soap had NULL expiration and was excluded from the list.");
+        runCase("ViewExpiring_NoProducts", () -> {
+            try { IsolatedDatabase.execute("UPDATE products SET expiration_date=NULL"); expirationRange(7); refresh();
+                check(text(stage, "#listMessage").equals("No products expiring soon.") && fx(() -> ((TableView<?>)stage.getScene().lookup("#expiringTable")).getItems().isEmpty()), "Empty expiry feedback differed");
+            } finally { resetB4Products(); }
+            refresh();
+        }, "With no dated products, seven-day filtering showed exactly No products expiring soon.; fixtures were restored.");
+        runCase("ViewExpiring_DatabaseError", () -> unavailable(() -> { refresh(); check(text(stage, "#listMessage").equals("Cannot load the list. Please try again."), "Expiry database error differed"); }), "An unreachable isolated endpoint showed the specified expiration-list error.");
+        click("Inventory"); waitList(); inventorySearch("Coke Mismo 8oz"); selectFirstProduct();
+        runCase("SetExpiration_SunnyDay", () -> { openEditProduct(); setProductDate(LocalDate.of(2027,6,30)); save(); check(listedProduct().expirationDate().equals(LocalDate.of(2027,6,30)), "Saved date differs"); }, "2027-06-30 was saved and displayed for Coke Mismo 8oz.");
+        runCase("SetExpiration_NoExpiration", () -> { selectFirstProduct(); openEditProduct(); fx(() -> { ((CheckBox)findForm().getScene().lookup("#noExpiration")).setSelected(true); check(findForm().getScene().lookup("#expirationField").isDisabled(), "Date field stayed enabled"); return null; }); save(); check(listedProduct().expirationDate()==null, "NULL date was not saved"); }, "Ticking No expiration date disabled the date field and saved NULL.");
+        runCase("SetExpiration_InvalidDate", () -> { selectFirstProduct(); openEditProduct(); fx(() -> { ((DatePicker)findForm().getScene().lookup("#expirationField")).getEditor().setText("2026-13-45"); ((CheckBox)findForm().getScene().lookup("#noExpiration")).setSelected(false); return null; });
+            pressForm("#saveButton"); check(text(form(), "#dateError").equals("Please enter a valid date."), "Invalid date feedback differed"); cancel(); check(listedProduct().expirationDate()==null, "Invalid date changed row");
+        }, "2026-13-45 showed Please enter a valid date. and preserved the existing NULL date.");
+        runCase("SetExpiration_PastDateNo", () -> { selectFirstProduct(); openEditProduct(); fx(() -> { ((CheckBox)findForm().getScene().lookup("#noExpiration")).setSelected(false); return null; }); setProductDate(LocalDate.of(2026,1,1)); confirmProductDate("No"); check(fx(() -> findForm()!=null), "No closed the form"); cancel(); check(listedProduct().expirationDate()==null, "No saved a past date"); }, "2026-01-01 prompted for confirmation; No returned to the form without saving.");
+        runCase("SetExpiration_PastDateYes", () -> { selectFirstProduct(); openEditProduct(); fx(() -> { ((CheckBox)findForm().getScene().lookup("#noExpiration")).setSelected(false); return null; }); setProductDate(LocalDate.of(2026,1,1)); confirmProductDate("Yes"); check(listedProduct().expirationDate().equals(LocalDate.of(2026,1,1)), "Yes did not save the past date"); }, "2026-01-01 was saved only after the specified confirmation and Yes.");
+        resetB4Products(); click("Credit Management"); waitList();
+    }
+
+    private static void benchmarkB4() throws Exception {
+        IsolatedDatabase.verify();
+        int baseline = number("SELECT COUNT(*) FROM products");
+        check(baseline < 1000, "Unexpected fixture size");
+        try (Connection c = DatabaseConnection.getConnection(); PreparedStatement s = c.prepareStatement(
+                "INSERT INTO products(name,price,stock_qty,expiration_date) VALUES(?,1.00,1,NULL)")) {
+            for(int i=baseline;i<1000;i++){ s.setString(1,"Day6 benchmark a "+i); s.addBatch(); } s.executeBatch();
+        }
+        click("Inventory"); waitList();
+        runCase("SearchProduct_Speed", () -> {
+            check(number("SELECT COUNT(*) FROM products")==1000,"Benchmark does not contain exactly 1000 products");
+            java.util.ArrayList<Long> elapsed = new java.util.ArrayList<>();
+            for(int i=0;i<3;i++) {
+                setText(stage,"#searchField","a"); long start=System.nanoTime(); click("Search"); waitList();
+                fx(() -> { stage.getScene().getRoot().applyCss(); stage.getScene().getRoot().layout(); return null; });
+                elapsed.add(TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-start));
+                check(listedProducts()==number("SELECT COUNT(*) FROM products WHERE LOCATE('a',name)>0"),"Benchmark results incomplete");
+            }
+            result("NFR02_Measurements","Pass","Exactly 1000 products; search a; query-to-JavaFX-layout milliseconds for three runs: "+elapsed+". Local test host only; no low-spec hardware certification.");
+            check(elapsed.stream().allMatch(ms -> ms<=2000),"Search exceeded 2000 ms: "+elapsed);
+        }, "Search a with exactly 1000 products completed within 2 seconds in all three local query-to-layout measurements.");
+        IsolatedDatabase.execute("DELETE FROM products WHERE name LIKE 'Day6 benchmark a %'");
+        check(number("SELECT COUNT(*) FROM products")==baseline,"Benchmark fixtures were not removed");
+        click("Credit Management"); waitList();
+    }
+
+    private static void continuousCreditFlow() throws Exception {
+        resetNena(); openUtang("Aling Nena"); setText(form(),"#itemsField","2 Pancit Canton"); setText(form(),"#amountField","30"); save(); assertBalance("Aling Nena","280.00");
+        pay("Aling Nena","50"); assertBalance("Aling Nena","230.00"); pay("Aling Nena","230"); assertBalance("Aling Nena","0.00");
+        var history=dao.findHistory(customer("Aling Nena").id());
+        check(history.size()==4 && history.stream().filter(t -> t.type().equals("Payment")).count()==2,"Lifecycle history differs");
+        BigDecimal total=history.stream().map(t -> t.type().equals("Payment")?t.amount().negate():t.amount()).reduce(BigDecimal.ZERO,BigDecimal::add);
+        check(total.signum()==0,"History does not reconcile to zero");
+    }
+
+    private static void guestB4() throws Exception {
+        click("Logout"); click("Continue as Guest (View Only)");
+        waitFor(() -> !((Button)stage.getScene().lookup("#searchButton")).isDisabled());
+        runCase("GuestMode_SunnyDay", () -> {
+            check(fx(() -> !((TableView<?>)stage.getScene().lookup("#productsTable")).getItems().isEmpty()
+                    && stage.getScene().getRoot().lookupAll(".label").stream().anyMatch(n -> n instanceof Label l && l.getText().contains("View only"))),"Guest products/banner missing");
+            check(fx(() -> ((TableView<?>)stage.getScene().lookup("#productsTable")).getColumns().size()==3),"Guest projection differs");
+        }, "Guest products displayed only product, peso price and stock with a View only banner.");
+        runCase("GuestMode_SearchProduct", () -> { setText(stage,"#searchField","safeguard"); click("Search"); waitFor(() -> !((Button)stage.getScene().lookup("#searchButton")).isDisabled());
+            check(fx(() -> ((TableView<?>)stage.getScene().lookup("#productsTable")).getItems().stream().anyMatch(p -> p instanceof GuestService.ProductRow row && row.name().equals("Safeguard Soap") && row.price().equals(new BigDecimal("38.00")) && row.stockQuantity()==12)),"Guest Safeguard result differs");
+        }, "safeguard found Safeguard Soap at 38.00 with stock 12.");
+        runCase("GuestMode_SearchNoMatch", () -> { setText(stage,"#searchField","xyz123"); click("Search"); waitFor(() -> !((Button)stage.getScene().lookup("#searchButton")).isDisabled());
+            check(fx(() -> ((TableView<?>)stage.getScene().lookup("#productsTable")).getItems().isEmpty()
+                    && ((Label)((TableView<?>)stage.getScene().lookup("#productsTable")).getPlaceholder()).getText().equals("No products found.")),"Guest no-match feedback differs");
+        }, "xyz123 showed No products found. in the guest table.");
+        runCase("GuestMode_DatabaseError", () -> unavailable(() -> { setText(stage,"#searchField",""); click("Search"); waitFor(() -> !((Button)stage.getScene().lookup("#searchButton")).isDisabled());
+            check(fx(() -> ((Label)((TableView<?>)stage.getScene().lookup("#productsTable")).getPlaceholder()).getText()).equals("Cannot load the data. Please try again."),"Guest database feedback differed");
+        }), "An unreachable isolated endpoint showed the specified safe guest error.");
+        runCase("Day6_GuestInventoryGuards", () -> {
+            ProductDao oldOwnerProducts=new ProductDao(sessions,owner); Product sample=new Product(1,"Forbidden",BigDecimal.ONE,1,null);
+            int before=number("SELECT COUNT(*) FROM products");
+            expectDenied(() -> oldOwnerProducts.addProduct("Forbidden",BigDecimal.ONE,1,null));
+            expectDenied(() -> oldOwnerProducts.updateProduct(sample,BigDecimal.TEN,2,LocalDate.now()));
+            expectDenied(() -> oldOwnerProducts.deleteProduct(sample));
+            check(number("SELECT COUNT(*) FROM products")==before,"Guest changed inventory");
+        }, "Guest session was rejected by product add, update/expiration and delete logic before database changes.");
+        runCase("GuestMode_ExitGuestMode", () -> { click("Exit Guest Mode"); check(fx(() -> stage.getScene().lookup("#usernameField")!=null),"Guest exit did not return Login"); sessions.requireSignedOut(); }, "Exit Guest Mode returned to Login and cleared the guest session.");
+        login();
     }
 
     private static void addValidationProduct() throws Exception {
@@ -561,6 +959,12 @@ public final class Day5UiCheck {
         CreditService ownerService = new CreditService(dao);
         expectDenied(() -> ownerService.recordPayment(new PaymentRequest(1, new BigDecimal("1"), LocalDate.now())));
         expectDenied(() -> ownerService.recordUtang(new UtangRequest(null, "Denied", "", new BigDecimal("1"), LocalDate.now())));
+        if (DASHBOARD_CHECKS) {
+            runCase("Day7_DashboardGuestDenied", () -> {
+                expectDenied(() -> new DashboardDao(sessions, owner).readSummary(LocalDate.now()));
+                check(fx(() -> stage.getScene().lookup("#totalCredits")==null), "Guest view exposed owner summary cards");
+            }, "Guest view had no Dashboard totals and the owner summary DAO rejected the guest session.");
+        }
         Method show = TindaTrackApplication.class.getDeclaredMethod("showOwnerScreen", Stage.class, OwnerSession.class, Destination.class); show.setAccessible(true);
         try { fx(() -> { show.invoke(app, stage, owner, Destination.CREDIT); return null; }); throw new AssertionError("Guest opened owner credit"); }
         catch (Exception denied) {

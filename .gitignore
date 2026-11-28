@@ -45,6 +45,7 @@ nbproject/private/
 !.env.*.example
 config/local.properties
 config/database.properties
+/private-import/
 src/main/resources/database.properties
 src/main/resources/database-local.properties
 

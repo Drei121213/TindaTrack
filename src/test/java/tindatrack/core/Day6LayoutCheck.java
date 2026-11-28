@@ -104,6 +104,13 @@ public final class Day6LayoutCheck {
             if (name.equals("credit")) {
                 require(hasCell(root, "₱250.00") && hasCell(root, "₱0.00"), "Credit/zero balance formatting differs");
             }
+            if (name.equals("owner-home")) {
+                for (String label : List.of("totalProducts", "totalCredits", "expiringProducts")) {
+                    Label value = (Label) loader.getNamespace().get(label);
+                    Bounds bounds = value.localToScene(value.getBoundsInLocal());
+                    require(bounds.getMaxX() <= root.getLayoutBounds().getWidth() && bounds.getMaxY() <= root.getLayoutBounds().getHeight(), "Dashboard value is clipped");
+                }
+            }
             if (name.equals("expiring-soon")) {
                 require(hasCell(root, "Expired") && hasCell(root, "5 Days Left"), "Expiration text is missing");
                 require(highlightedRows(root, "expired") == 1, "Expired highlight differs");
@@ -216,7 +223,12 @@ public final class Day6LayoutCheck {
             rows(loader, "historyTable", List.of(new CreditTransaction(1, "Utang", "2 Pancit Canton", new BigDecimal("30.00"), LocalDateTime.of(today, java.time.LocalTime.of(8, 0)))));
         }
         if (name.equals("guest")) rows(loader, "productsTable", List.of(new ProductRow("Lucky Me Pancit Canton", new BigDecimal("15.00"), 40)));
-        if (name.equals("owner-home")) ((Label) loader.getNamespace().get("ownerGreeting")).setText("Welcome, Maggie!");
+        if (name.equals("owner-home")) {
+            ((Label) loader.getNamespace().get("ownerGreeting")).setText("Welcome, Maggie!");
+            ((Label) loader.getNamespace().get("totalProducts")).setText("1000");
+            ((Label) loader.getNamespace().get("totalCredits")).setText("₱199999999.98");
+            ((Label) loader.getNamespace().get("expiringProducts")).setText("12");
+        }
         if (name.equals("login")) {
             ((Node) loader.getNamespace().get("createAccountLink")).setVisible(true);
             ((Label) loader.getNamespace().get("feedbackLabel")).setText("Invalid username or password.");

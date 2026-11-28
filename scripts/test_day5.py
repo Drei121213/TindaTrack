@@ -58,11 +58,20 @@ def main():
     parser.add_argument("--navigation-checks", action="store_true", help="Also check Day 6 owner navigation and state.")
     parser.add_argument("--layout-checks", action="store_true", help="Also render Day 6 layouts at two desktop sizes; includes navigation checks.")
     parser.add_argument("--validation-checks", action="store_true", help="Also check Day 6 validation and recovery; includes navigation checks.")
+    parser.add_argument("--integration-checks", action="store_true", help="Run Day 6 final integration/B4 checks, including the approved 1000-product benchmark.")
+    parser.add_argument("--dashboard-checks", action="store_true", help="Run Day 7 SB02 totals, refresh and recovery checks plus existing integration checks.")
     parser.add_argument("--report", help="Project-local JSON report path; defaults to the matching day.")
     args = parser.parse_args()
+    if args.dashboard_checks:
+        args.integration_checks = True
+    if args.integration_checks:
+        args.validation_checks = True
+        args.layout_checks = True
     if args.layout_checks or args.validation_checks:
         args.navigation_checks = True
-    report_name = args.report or ("docs/testing/day6-task4-results.json" if args.validation_checks else
+    report_name = args.report or ("docs/testing/day7-task2-results.json" if args.dashboard_checks else
+                                  "docs/testing/day6-task5-results.json" if args.integration_checks else
+                                  "docs/testing/day6-task4-results.json" if args.validation_checks else
                                   "docs/testing/day6-task3-results.json" if args.layout_checks else
                                   "docs/testing/day6-task2-results.json" if args.navigation_checks else "docs/testing/day5-results.json")
     REPORT = (PROJECT / report_name).resolve()
@@ -86,19 +95,23 @@ def main():
 
     TARGET.mkdir(exist_ok=True)
     report = {"executedAt": datetime.now(timezone(timedelta(hours=8))).isoformat(),
-              "scope": "Day 6 Task 4 validation and recovery checks" if args.validation_checks else
+              "scope": "Day 7 Task 2 SB02 fix and core regression checks" if args.dashboard_checks else
+                       "Day 6 Task 5 final integration and B4 checks" if args.integration_checks else
+                       "Day 6 Task 4 validation and recovery checks" if args.validation_checks else
                        "Day 6 Task 3 UI and regression checks" if args.layout_checks else
                        "Day 6 Task 2 navigation regression" if args.navigation_checks else "Day 5 acceptance",
               "environment": "Java 21 / JavaFX / disposable MySQL 8 inside project target",
               "productionDatabaseTouched": False,
               "seedApproval": "User approved isolated test data for Day 5 Task 5.",
               "ui": [], "database": [], "unit": [], "layout": [], "authentication": []}
+    if args.integration_checks:
+        report["benchmarkApproval"] = "User explicitly approved 1000 temporary products for the Day 6 NFR-02 benchmark."
     if REPORT.is_file():
         previous = json.loads(REPORT.read_text(encoding="utf-8"))
         history = previous.get("previousFailures", []) + [r for r in previous.get("ui", []) + previous.get("layout", []) + previous.get("authentication", []) if r["status"] == "Failed"]
         report["previousFailures"] = list({r["id"]: r for r in history}.values())
     for path in (TARGET / "surefire-reports").glob("TEST-*.xml"):
-        if path.name != "TEST-tindatrack.credit.CreditDatabaseTest.xml":
+        if path.name not in ("TEST-tindatrack.credit.CreditDatabaseTest.xml", "TEST-tindatrack.core.DashboardDatabaseTest.xml"):
             suite = ET.parse(path).getroot()
             report["unit"].append({"suite": suite.attrib["name"],
                                    "tests": int(suite.attrib["tests"]),
@@ -161,14 +174,17 @@ def main():
                             TINDATRACK_TEST_TARGET=str(TARGET.resolve()))
             test_env["TINDATRACK_NAVIGATION_CHECKS"] = str(args.navigation_checks).lower()
             test_env["TINDATRACK_VALIDATION_CHECKS"] = str(args.validation_checks).lower()
+            test_env["TINDATRACK_INTEGRATION_CHECKS"] = str(args.integration_checks).lower()
+            test_env["TINDATRACK_DASHBOARD_CHECKS"] = str(args.dashboard_checks).lower()
             print("Running isolated database tests...", flush=True)
-            database = run([MAVEN, "-B", "-o", "-Dtest=CreditDatabaseTest",
+            database = run([MAVEN, "-B", "-o", "-Dtest=CreditDatabaseTest,DashboardDatabaseTest",
                             "-Dtindatrack.test.workingDirectory=" + str(root), "test"], env=test_env)
             print(database.stdout, flush=True)
             if database.returncode:
                 print(database.stderr)
                 failed = True
             report["database"] = junit_results(TARGET / "surefire-reports" / "TEST-tindatrack.credit.CreditDatabaseTest.xml")
+            report["database"] += junit_results(TARGET / "surefire-reports" / "TEST-tindatrack.core.DashboardDatabaseTest.xml")
 
             # Only the approved B4 fixtures, on the isolated instance. Never import B4_seed_data.sql.
             sql("""USE tindatrack;
@@ -221,6 +237,8 @@ def main():
                         _, test_id, status, actual = line.split("\t", 3)
                         report["ui"].append({"id": test_id, "status": status, "actual": actual,
                                              "method": "Automated JavaFX / isolated MySQL"})
+                        if status == "Failed":
+                            failed = True
                 if ui.returncode:
                     print(ui.stderr)
                     failed = True

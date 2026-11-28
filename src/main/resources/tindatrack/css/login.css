@@ -220,3 +220,43 @@
 .guest-tab-content {
     -fx-padding: 16px;
 }
+
+.dashboard-greeting {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #203d2e;
+}
+
+.dashboard-scroll, .dashboard-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+}
+
+.summary-card {
+    -fx-background-color: white;
+    -fx-border-color: #d6e4db;
+    -fx-background-radius: 10px;
+    -fx-border-radius: 10px;
+    -fx-padding: 20px;
+    -fx-min-height: 160px;
+}
+
+.summary-value {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #286346;
+}
+
+.summary-money {
+    -fx-font-size: 24px;
+}
+
+.dashboard-status {
+    -fx-text-fill: #52675b;
+}
+
+.dashboard-status:error {
+    -fx-text-fill: #a12922;
+    -fx-font-weight: bold;
+}

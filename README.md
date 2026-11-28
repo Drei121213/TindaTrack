@@ -3,7 +3,25 @@
 A desktop sari-sari store management application using Java, JavaFX with FXML,
 Maven, and MySQL through JDBC.
 
-## Current scope: Day 6, Task 4
+## Current scope: Day 7, Task 2 completed; SB02 summary cards implemented
+
+The latest verification passed **all 67 B4 cases**, including SB02 Dashboard
+labels and numeric totals. The Dashboard now displays Total Products, Total
+Credits, and Expiring Soon using background, read-only queries. See the
+[Day 7 results](docs/testing/day7-task2-results.json) and
+[fresh B4 coverage](docs/testing/day7-task2-b4-coverage.json).
+Earlier Day 6 reports retain the original failure as historical evidence; they
+were not rewritten. Windows launcher, installer and MySQL deployment work remain
+for the later approved Day 7 tasks.
+
+Day 7 additional Task 2.5.3 completed the approved one-time import: 42 products
+were inserted, with no existing matches skipped. Database comparisons confirmed
+the previous records and table structures were unchanged. GUI verification in
+Task 2.5.4 is pending. The separate manual importer never runs at startup.
+The store CSV, backup, snapshots and receipt stay in the ignored `private-import/`
+folder and must remain outside installers and shared source archives. See the
+[product import guide](docs/PRODUCT_IMPORT.md) for offline validation, later
+approval steps and rollback instructions.
 
 TindaTrack opens the login screen from storyboard SB01. When the MySQL
 `users` table is empty, **Create Account** opens the owner registration pop-up
@@ -1518,6 +1536,190 @@ No current failures remain in the executed checks. These changes do not add
 transaction retry/replay behavior or alter business rules. Final RTM/B4 integration
 sign-off belongs to Task 5, which still requires approval. No release package was
 prepared.
+
+## Day 6, Task 5: Final integration verification
+
+The test suite now loads the real registration form to create the approved
+maggie/store123 fixture on its disposable database, rather than bypassing the form.
+It executes all 67 cases from the local `B4_Test_Cases_PR6_Updated.xlsx` reference,
+including previously unverified login, inventory and search flows. The reference
+workbook, RTM, earlier reports, production configuration, schema and application
+source were preserved. No B4_seed_data.sql import or release preparation occurred.
+
+### Run and review
+
+From the nested project folder with Java 21 selected:
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+mvn verify
+python -u scripts/test_day5.py --integration-checks
+python scripts/report_day6.py
+mvn javafx:run
+```
+
+The integration option includes the earlier navigation, validation and layout
+checks, plus the explicitly approved 1000-product search benchmark. It creates a
+separate MySQL instance inside ignored target and checks its actual data directory
+before fixture changes. Its test credentials/data/server are removed after the run.
+It does not change your configured database. Run it only where Java 21, Maven,
+MySQL Server 8, Python 3 and the project's cached dependencies are available.
+
+**The integration command currently exits with code 1 because SB02 conformance
+fails.** This is a recorded application gap, not a Maven build or database-startup
+failure. `mvn verify` passed. The report command runs afterward as a separate
+PowerShell command and reads the saved evidence; it does not rerun tests or mark
+failures as passing.
+
+### Results and evidence
+
+- Ordinary JUnit: **74 Pass**. Normal Maven verification skips 16 opt-in database
+  tests, which the launcher then runs separately against real isolated MySQL.
+- Real MySQL JUnit: **16 Pass**, including rollback and concurrent payment/utang
+  checks. Authentication controller checks with fake DAO responses: **8 Pass**.
+- JavaFX integration/regression evidence: **82 Pass, 1 Failed** across 83 entries.
+  This includes supporting checks outside the 67 B4 rows.
+- B4 mapping: **66 Pass, 1 Failed, 0 Blocked, 0 Not Run**. The original steps,
+  data, expected results and original type/method labels are preserved in the JSON
+  coverage alongside actual execution methods and evidence IDs.
+- Offscreen desktop/form layout checks: **20 Pass**. Target-user manual acceptance
+  and a formal three-click/readability assessment remain **Not Run**.
+- NFR-02: exactly **1000 products**, searching `a`, completed in **34, 33 and 34 ms**
+  across three query-to-JavaFX-layout measurements on this host. This does not
+  certify another computer or Windows scaling setting.
+
+Files:
+
+- `docs/testing/day6-task5-results.json`: complete executed-check results.
+- `docs/testing/day6-b4-coverage.json`: unchanged B4 definitions mapped to evidence.
+- `docs/testing/day6-final-review.md`: flow A-E results, completed integrations/UI
+  improvements, unresolved requirements, manual acceptance steps and Day 7 advice.
+- `scripts/report_day6.py`: reads the reference XLSX using standard ZIP/XML tools,
+  checks its hash, and regenerates the two review/coverage files from saved results.
+- `src/test/java/tindatrack/credit/Day5UiCheck.java`: adds actual registration,
+  exact B4 fixtures, product/search/error/expiration/guest cases, continuous credit
+  lifecycle, and the approved 1000-product benchmark. It changes no production code.
+
+The failed B4 row is **Login_SunnyDay** when compared strictly with SB02. The raw
+credential/login transition check passed, but the companion SB02 conformance check
+failed because the existing welcome Dashboard has no summary cards. Proposed
+follow-up: add the three cards to the existing screen with background read-only
+queries, refresh them on return, and verify their numeric values. This needs a
+separately approved implementation; it was not silently added during testing.
+
+Before Day 7 release work, resolve that gap, rerun the suite, and perform the
+manual acceptance checklist in the final review with the target user. The
+review also documents that PD01's Validator role currently resides in controller
+validation/CreditRules rather than a standalone shared Validator class. No
+architecture rewrite was performed. No other failure was observed in this run.
+
+## Day 7, Task 2: SB02 fix and core feature verification
+
+This task completes the three summary cards on the existing Dashboard. It does
+not add another dashboard, change the schema, alter purchase/payment rules, or
+start Windows packaging. The original B4 expected results remain unchanged.
+
+### Important classes and methods
+
+- `core/DashboardSummary` is a record holding the product count, outstanding credit
+  total, expiration count, and the cutoff date used for that count.
+- `core/DashboardDao.readSummary(today)` checks the exact active owner session,
+  runs one read-only prepared statement, closes its JDBC resources, then checks
+  the owner session again before returning data. Scalar subqueries prevent joins
+  from multiplying counts. The shared DatabaseConnection remains unchanged.
+- Total Products counts product rows, including products with zero stock. It does
+  not add stock quantities.
+- Total Credits sums `customers.balance`, with PHP 0.00 for an empty store. It is
+  outstanding debt, not the sum of historical purchases. Purchases and payments
+  already update these balances through the existing transactional services.
+- Expiring Soon counts non-NULL dates on or before the computer's current local
+  date plus seven days. It includes expired items and zero-stock rows, matching
+  the existing Expiring Soon view's default seven-day behavior. The displayed
+  cutoff clarifies the meaning; the card does not follow a remembered 14/30-day
+  filter on the separate expiration screen.
+- `OwnerHomeController.activate()` reloads the cards on login and return to
+  Dashboard. `loadSummary()` runs the database read on a background JavaFX Task.
+  Refresh Summary retries or reloads without creating another window.
+- `deactivate()` cancels pending reads, clears the old card values, and causes
+  obsolete callbacks to be ignored. Errors/loading display dashes, so failed
+  reads are not misrepresented as zero inventory or zero debt. A real empty store
+  displays 0, PHP 0.00, and 0. Connection failures show a safe message and allow
+  another Refresh Summary; ended owner sessions cannot read the summary.
+- The existing application navigation now activates/deactivates the Home controller
+  like the other feature controllers. Guest Mode has no summary cards and the
+  Dashboard DAO rejects a guest or ended owner session.
+- `owner-home.fxml` contains the existing greeting and three responsive cards.
+  A scrolling card area accommodates narrow/short windows. Shared CSS retains
+  the green theme and shows outstanding credit in pesos with two decimals.
+
+### Run and test
+
+From the nested project folder in PowerShell:
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+mvn verify
+python -u scripts/test_day5.py --dashboard-checks
+python scripts/report_day7.py
+mvn javafx:run
+```
+
+Normal Maven verification passed **74 ordinary JUnit tests** and skips the
+**24 opt-in MySQL tests**. The disposable-server launcher then passed all
+**24 actual MySQL tests**: eight new Dashboard tests and 16 existing credit tests.
+It also passed **8 authentication controller checks**, **88 JavaFX integration
+checks**, and **20 desktop/form layout checks**. The fresh B4 mapping is
+**67 Pass, 0 Failed, 0 Blocked, 0 Not Run**. The former SB02 failure is now checked
+against real numeric totals, not just card labels. The full run exited with code 0.
+
+The new MySQL tests cover empty totals, row counts versus stock units, current
+balances versus history, expired/today/day-seven/day-eight/NULL boundaries, sums
+larger than an individual balance column's limit, repeat read behavior, guest
+rejection, and ended-session rejection. JavaFX checks compare all three displayed
+values with independent SQL reads, save a product and utang/payment while on other
+screens, verify refreshed totals on return, test an empty store, inject a connection
+failure and retry it, and leave during a pending load. Existing login, registration,
+CRUD, expiration, financial, guest and restart checks also passed.
+
+The launcher uses only the previously approved disposable MySQL server and test
+fixtures, including the approved 1000-product benchmark. It does not read or modify
+the configured production credentials or import B4_seed_data.sql. The temporary
+server and its data are removed after the run. Schema files, existing business DAOs,
+password hashing and earlier reports are unchanged. `report_day7.py` reuses the
+read-only B4 parser and writes a new coverage file without changing the reference
+workbook or the historical Day 6 review.
+
+Evidence:
+
+- `docs/testing/day7-task2-results.json`: complete execution results.
+- `docs/testing/day7-task2-b4-coverage.json`: original definitions and current results.
+- `target/day7-task2-dashboard.png`: ignored preview from the real JavaFX check.
+- `target/day6-task3-ui/owner-home-1024x768.png` and the 1366x768 variant: ignored
+  offscreen previews, visually inspected with a large credit total as well.
+
+### Manual checklist
+
+1. Launch with MySQL running and sign in. Verify the three cards and peso formatting.
+2. Compare Total Products with the number of product rows and Total Credits with
+   the sum of customer balances, including customers with zero balances.
+3. Open Expiring Soon, choose seven days, and compare its row count with the
+   Dashboard card. Expired items count; NULL dates do not.
+4. Using approved test records, add/edit/delete a product or record an utang/payment.
+   Return to Dashboard and verify that the appropriate totals refresh. Refresh
+   Summary should also reload the current values without navigation.
+5. Resize the window and confirm cards can scroll when needed, with Refresh Summary
+   and the status message still accessible. Log out and enter Guest Mode; owner
+   cards must be absent. Sign in again and verify a fresh summary.
+6. Connection-failure and empty-store scenarios are covered by the isolated suite.
+   Do not empty the configured store or change its credentials just to test these.
+
+No current core-feature failure remains in the executed checks. Target-user manual
+acceptance remains unverified. The working-directory configuration issue and
+runtime/dependency/MySQL deployment requirements from Day 7 Task 1 remain for
+later tasks; this task does not claim standalone installation or offline/clean-PC
+verification. Stop here for approval before Task 3.
 
 ## Day 2 integration verification
 
